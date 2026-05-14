@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    font-family: var(--font-inter), -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  /* When the document language is Hindi, prefer Devanagari font for body. */
+  html[lang="hi"] body {
+    font-family: var(--font-devanagari), var(--font-inter), -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+}
+
+/* Smooth scrollbar (light + dark) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(203 213 225); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(148 163 184); }
+.dark ::-webkit-scrollbar-thumb { background: rgb(51 65 85); }
+.dark ::-webkit-scrollbar-thumb:hover { background: rgb(71 85 105); }
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

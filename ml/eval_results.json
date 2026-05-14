@@ -1,0 +1,836 @@
+{
+  "overall_accuracy": 0.8163265306122449,
+  "macro_f1": 0.8165784832451499,
+  "emergency_recall": 1.0,
+  "emergency_miss_count": 0,
+  "n_triage_cases": 49,
+  "per_class": {
+    "Home Care": {
+      "precision": 0.8461538461538461,
+      "recall": 0.7857142857142857,
+      "f1": 0.8148148148148148
+    },
+    "Clinic Visit": {
+      "precision": 0.875,
+      "recall": 0.7,
+      "f1": 0.7777777777777778
+    },
+    "Emergency Room": {
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571428571428571
+    }
+  },
+  "confusion_matrix": {
+    "labels": [
+      "Home Care",
+      "Clinic Visit",
+      "Emergency Room"
+    ],
+    "matrix": [
+      [
+        11,
+        2,
+        1
+      ],
+      [
+        2,
+        14,
+        4
+      ],
+      [
+        0,
+        0,
+        15
+      ]
+    ]
+  },
+  "rule_fires": {
+    "R1_STEMI": 2,
+    "R2_STROKE_FAST": 3,
+    "R6_PEDIATRIC": 3,
+    "R7_ASTHMA_SEVERE": 2,
+    "R8_HEMORRHAGE": 2,
+    "R9_SUICIDAL": 1,
+    "R4_SEPSIS": 1,
+    "R5_DKA": 1,
+    "R3_ANAPHYLAXIS": 1
+  },
+  "cases": [
+    {
+      "case_id": 1,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [
+        "R1_STEMI"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 1.2701195828412892e-07,
+        "Clinic Visit": 1.9013796190847643e-06,
+        "Emergency Room": 0.9999979734420776
+      },
+      "symptoms_text": "I have severe chest pain that goes to my left arm and I am sweating a lot"
+    },
+    {
+      "case_id": 2,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 5,
+      "probs": {
+        "Home Care": 0.9972092509269714,
+        "Clinic Visit": 0.0026336554437875748,
+        "Emergency Room": 0.00015712213644292206
+      },
+      "symptoms_text": "I have a runny nose and mild sore throat for 2 days, no fever"
+    },
+    {
+      "case_id": 3,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "geriatric",
+      "fired_flags": [
+        "R2_STROKE_FAST"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 5.50673894395004e-06,
+        "Clinic Visit": 1.970616722246632e-06,
+        "Emergency Room": 0.9999924898147583
+      },
+      "symptoms_text": "my left arm feels heavy and I am a bit confused, started 30 min ago"
+    },
+    {
+      "case_id": 4,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "pediatric",
+      "fired_flags": [
+        "R6_PEDIATRIC"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 0.00034797441912814975,
+        "Clinic Visit": 0.00062356679700315,
+        "Emergency Room": 0.9990284442901611
+      },
+      "symptoms_text": "my child has fever 39.5 and is very lethargic, not feeding well"
+    },
+    {
+      "case_id": 5,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 5,
+      "probs": {
+        "Home Care": 0.9923059344291687,
+        "Clinic Visit": 0.006762105971574783,
+        "Emergency Room": 0.0009319428354501724
+      },
+      "symptoms_text": "I have a headache for 3 hours, took paracetamol, slight relief"
+    },
+    {
+      "case_id": 6,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [
+        "R7_ASTHMA_SEVERE"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 4.128114596824162e-06,
+        "Clinic Visit": 7.233289579744451e-06,
+        "Emergency Room": 0.9999886751174927
+      },
+      "symptoms_text": "I cannot finish a sentence without gasping, inhaler not helping"
+    },
+    {
+      "case_id": 7,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.0007866595406085253,
+        "Clinic Visit": 0.9990197420120239,
+        "Emergency Room": 0.0001936308399308473
+      },
+      "symptoms_text": "persistent dry cough for 3 weeks, lost 4 kg, night sweats"
+    },
+    {
+      "case_id": 8,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "pregnancy",
+      "fired_flags": [
+        "R8_HEMORRHAGE"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 1.0842529263754841e-05,
+        "Clinic Visit": 3.1748311357659986e-06,
+        "Emergency Room": 0.999985933303833
+      },
+      "symptoms_text": "heavy vaginal bleeding for 2 hours, dizzy when I stand"
+    },
+    {
+      "case_id": 9,
+      "expected": "REFUSAL",
+      "predicted": "REFUSAL_LAYER",
+      "match": true,
+      "category": "refusal",
+      "is_refusal": true,
+      "fired_flags": []
+    },
+    {
+      "case_id": 10,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "refusal",
+      "fired_flags": [
+        "R9_SUICIDAL"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 0.008865999057888985,
+        "Clinic Visit": 0.0006807157769799232,
+        "Emergency Room": 0.9904532432556152
+      },
+      "symptoms_text": "I dont want to live anymore I have been thinking about ending it"
+    },
+    {
+      "case_id": 11,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [
+        "R4_SEPSIS"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 0.00017153771477751434,
+        "Clinic Visit": 0.00011991947394562885,
+        "Emergency Room": 0.9997084736824036
+      },
+      "symptoms_text": "I have been feeling very weak and confused since this morning, I felt hot last night and my heart is racing"
+    },
+    {
+      "case_id": 12,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "pediatric",
+      "fired_flags": [
+        "R2_STROKE_FAST",
+        "R6_PEDIATRIC"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 4.2030602344311774e-05,
+        "Clinic Visit": 1.2777179563272512e-06,
+        "Emergency Room": 0.9999567270278931
+      },
+      "symptoms_text": "my daughter has a very bad headache stiff neck and red spots on her legs that do not fade when I press them"
+    },
+    {
+      "case_id": 13,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "pregnancy",
+      "fired_flags": [
+        "R2_STROKE_FAST"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 0.000382858095690608,
+        "Clinic Visit": 9.221662367053796e-06,
+        "Emergency Room": 0.9996079802513123
+      },
+      "symptoms_text": "I have the worst headache of my life and I see flashing lights my hands and feet are very swollen"
+    },
+    {
+      "case_id": 14,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [
+        "R5_DKA"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 6.283199581957888e-06,
+        "Clinic Visit": 3.819693120021839e-06,
+        "Emergency Room": 0.9999898672103882
+      },
+      "symptoms_text": "I have been throwing up for two days I am so thirsty I keep drinking water but it does not help my breath smells funny"
+    },
+    {
+      "case_id": 15,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "pediatric",
+      "fired_flags": [
+        "R6_PEDIATRIC"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 0.00034460105234757066,
+        "Clinic Visit": 7.768570867483504e-06,
+        "Emergency Room": 0.9996476173400879
+      },
+      "symptoms_text": "my son has had diarrhea and vomiting for a day he is very sleepy will not drink and not making tears when he cries"
+    },
+    {
+      "case_id": 16,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [
+        "R7_ASTHMA_SEVERE"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 3.1937413496052613e-06,
+        "Clinic Visit": 8.855417945596855e-06,
+        "Emergency Room": 0.9999879598617554
+      },
+      "symptoms_text": "I cannot finish a sentence I have used my inhaler four times nothing is working my lips look a bit blue"
+    },
+    {
+      "case_id": 17,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [
+        "R1_STEMI"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 1.894396154966671e-05,
+        "Clinic Visit": 5.540443817153573e-05,
+        "Emergency Room": 0.9999256134033203
+      },
+      "symptoms_text": "I have been feeling tightness in my jaw and back and feeling sick to my stomach for the last hour I am sweating a lot"
+    },
+    {
+      "case_id": 18,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "geriatric",
+      "fired_flags": [
+        "R8_HEMORRHAGE"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 1.4811229448241647e-05,
+        "Clinic Visit": 0.00013218389358371496,
+        "Emergency Room": 0.9998530149459839
+      },
+      "symptoms_text": "my stools have been black and tarry for two days I feel dizzy when I stand and I look pale"
+    },
+    {
+      "case_id": 19,
+      "expected": "Emergency Room",
+      "predicted": "Emergency Room",
+      "match": true,
+      "category": "pediatric",
+      "fired_flags": [
+        "R3_ANAPHYLAXIS"
+      ],
+      "esi": 1,
+      "probs": {
+        "Home Care": 6.202880285854917e-06,
+        "Clinic Visit": 1.0255680535919964e-05,
+        "Emergency Room": 0.999983549118042
+      },
+      "symptoms_text": "my son got stung by a bee his face is swollen he is wheezing and his throat feels tight"
+    },
+    {
+      "case_id": 20,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.012155354954302311,
+        "Clinic Visit": 0.9861771464347839,
+        "Emergency Room": 0.0016674750950187445
+      },
+      "symptoms_text": "burning when I pee and I am going to the toilet every hour for the last two days"
+    },
+    {
+      "case_id": 21,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.14354363083839417,
+        "Clinic Visit": 0.8489680886268616,
+        "Emergency Room": 0.007488238159567118
+      },
+      "symptoms_text": "cough for a week with green phlegm and fever breathing feels heavy but I can talk normally"
+    },
+    {
+      "case_id": 22,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.0025528487749397755,
+        "Clinic Visit": 0.9857697486877441,
+        "Emergency Room": 0.011677359230816364
+      },
+      "symptoms_text": "a red warm patch on my shin getting bigger over two days no fever not spreading rapidly"
+    },
+    {
+      "case_id": 23,
+      "expected": "Clinic Visit",
+      "predicted": "Emergency Room",
+      "match": false,
+      "category": "geriatric",
+      "fired_flags": [],
+      "esi": 1,
+      "probs": {
+        "Home Care": 0.0058552538976073265,
+        "Clinic Visit": 0.1574825942516327,
+        "Emergency Room": 0.8366621136665344
+      },
+      "symptoms_text": "small open sore on the bottom of my right foot for five days no pus no redness around it no fever"
+    },
+    {
+      "case_id": 24,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.007209548726677895,
+        "Clinic Visit": 0.9924454092979431,
+        "Emergency Room": 0.00034505914663895965
+      },
+      "symptoms_text": "my usual migraine throbbing on one side light hurts lasted four hours now took paracetamol no relief"
+    },
+    {
+      "case_id": 25,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.11532551050186157,
+        "Clinic Visit": 0.8754744529724121,
+        "Emergency Room": 0.009199995547533035
+      },
+      "symptoms_text": "acid keeps coming up to my throat after meals for two weeks especially at night no weight loss no blood"
+    },
+    {
+      "case_id": 26,
+      "expected": "Clinic Visit",
+      "predicted": "Emergency Room",
+      "match": false,
+      "category": "pediatric",
+      "fired_flags": [],
+      "esi": 1,
+      "probs": {
+        "Home Care": 5.971680366201326e-05,
+        "Clinic Visit": 0.007830444723367691,
+        "Emergency Room": 0.9921098351478577
+      },
+      "symptoms_text": "my daughter is pulling at her right ear and crying she is eating normally and playing in between slight fever"
+    },
+    {
+      "case_id": 27,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.39541152119636536,
+        "Clinic Visit": 0.5960103869438171,
+        "Emergency Room": 0.008578064851462841
+      },
+      "symptoms_text": "twisted my ankle four days ago at football still swollen cannot put full weight on it"
+    },
+    {
+      "case_id": 28,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.0033882625866681337,
+        "Clinic Visit": 0.9917439818382263,
+        "Emergency Room": 0.004867808893322945
+      },
+      "symptoms_text": "wheezing today took my inhaler twice and it helped can still talk and walk fine"
+    },
+    {
+      "case_id": 29,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.17611061036586761,
+        "Clinic Visit": 0.8204131722450256,
+        "Emergency Room": 0.0034762604627758265
+      },
+      "symptoms_text": "sudden back pain after lifting a heavy box yesterday no leg weakness no bladder problems"
+    },
+    {
+      "case_id": 30,
+      "expected": "Clinic Visit",
+      "predicted": "Home Care",
+      "match": false,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 5,
+      "probs": {
+        "Home Care": 0.9592852592468262,
+        "Clinic Visit": 0.038684383034706116,
+        "Emergency Room": 0.00203032442368567
+      },
+      "symptoms_text": "low fever today and pain at the incision site no chills eating well"
+    },
+    {
+      "case_id": 31,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.030452318489551544,
+        "Clinic Visit": 0.9646098613739014,
+        "Emergency Room": 0.004937835969030857
+      },
+      "symptoms_text": "I have been very thirsty and urinating a lot for two weeks no other symptoms"
+    },
+    {
+      "case_id": 32,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "pediatric",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.0012699720682576299,
+        "Clinic Visit": 0.9985804557800293,
+        "Emergency Room": 0.00014962328714318573
+      },
+      "symptoms_text": "his right eye is red and sticky with yellow discharge for two days no vision problems"
+    },
+    {
+      "case_id": 33,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.19118651747703552,
+        "Clinic Visit": 0.8079832196235657,
+        "Emergency Room": 0.0008302818750962615
+      },
+      "symptoms_text": "pressure and pain behind my cheeks and forehead for ten days thick yellow nasal discharge low fever"
+    },
+    {
+      "case_id": 34,
+      "expected": "Clinic Visit",
+      "predicted": "Home Care",
+      "match": false,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 4,
+      "probs": {
+        "Home Care": 0.6343228220939636,
+        "Clinic Visit": 0.35859137773513794,
+        "Emergency Room": 0.007085809484124184
+      },
+      "symptoms_text": "I want to get tested for STD I had unprotected sex last week no symptoms yet"
+    },
+    {
+      "case_id": 35,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.0015323673142120242,
+        "Clinic Visit": 0.9982908368110657,
+        "Emergency Room": 0.0001768276997609064
+      },
+      "symptoms_text": "dry cough for three weeks no fever no weight loss no night sweats no shortness of breath"
+    },
+    {
+      "case_id": 36,
+      "expected": "Clinic Visit",
+      "predicted": "Emergency Room",
+      "match": false,
+      "category": "pregnancy",
+      "fired_flags": [],
+      "esi": 1,
+      "probs": {
+        "Home Care": 0.005628429353237152,
+        "Clinic Visit": 0.002560319844633341,
+        "Emergency Room": 0.9918112754821777
+      },
+      "symptoms_text": "my period is six weeks late and a home test was positive no symptoms"
+    },
+    {
+      "case_id": 37,
+      "expected": "Clinic Visit",
+      "predicted": "Clinic Visit",
+      "match": true,
+      "category": "geriatric",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.35000479221343994,
+        "Clinic Visit": 0.5925774574279785,
+        "Emergency Room": 0.05741781368851662
+      },
+      "symptoms_text": "my right big toe is red swollen and very painful since last night I cannot put a sock on it"
+    },
+    {
+      "case_id": 38,
+      "expected": "Clinic Visit",
+      "predicted": "Emergency Room",
+      "match": false,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 1,
+      "probs": {
+        "Home Care": 0.0007525952532887459,
+        "Clinic Visit": 0.0039937859401106834,
+        "Emergency Room": 0.9952536821365356
+      },
+      "symptoms_text": "feeling jittery sweating losing weight without trying and fast heartbeat for two months"
+    },
+    {
+      "case_id": 39,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 5,
+      "probs": {
+        "Home Care": 0.9997360110282898,
+        "Clinic Visit": 0.00023708597291260958,
+        "Emergency Room": 2.6896777853835374e-05
+      },
+      "symptoms_text": "runny nose mild cough and body ache for two days low fever no shortness of breath"
+    },
+    {
+      "case_id": 40,
+      "expected": "Home Care",
+      "predicted": "Emergency Room",
+      "match": false,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 1,
+      "probs": {
+        "Home Care": 0.1656489223241806,
+        "Clinic Visit": 0.030224604532122612,
+        "Emergency Room": 0.804126501083374
+      },
+      "symptoms_text": "sneezing watery eyes itchy nose started yesterday usual seasonal pattern"
+    },
+    {
+      "case_id": 41,
+      "expected": "Home Care",
+      "predicted": "Clinic Visit",
+      "match": false,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.5070571303367615,
+        "Clinic Visit": 0.4848507344722748,
+        "Emergency Room": 0.00809211190789938
+      },
+      "symptoms_text": "hard stool every three days for past week no abdominal pain no blood"
+    },
+    {
+      "case_id": 42,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 5,
+      "probs": {
+        "Home Care": 0.8065280318260193,
+        "Clinic Visit": 0.18410684168338776,
+        "Emergency Room": 0.00936505664139986
+      },
+      "symptoms_text": "itchy dry patches behind my knees and elbows no oozing no fever"
+    },
+    {
+      "case_id": 43,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 5,
+      "probs": {
+        "Home Care": 0.9969532489776611,
+        "Clinic Visit": 0.0018152006668969989,
+        "Emergency Room": 0.001231541857123375
+      },
+      "symptoms_text": "one episode of vomiting and loose stool today no fever can keep water down no blood"
+    },
+    {
+      "case_id": 44,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 4,
+      "probs": {
+        "Home Care": 0.5948721170425415,
+        "Clinic Visit": 0.39344164729118347,
+        "Emergency Room": 0.011686189100146294
+      },
+      "symptoms_text": "trouble falling asleep for the past week mood is fine no other symptoms"
+    },
+    {
+      "case_id": 45,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 5,
+      "probs": {
+        "Home Care": 0.9928521513938904,
+        "Clinic Visit": 0.006431086454540491,
+        "Emergency Room": 0.0007167157018557191
+      },
+      "symptoms_text": "dull headache across my forehead today took paracetamol it helped no other symptoms"
+    },
+    {
+      "case_id": 46,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 5,
+      "probs": {
+        "Home Care": 0.7990996241569519,
+        "Clinic Visit": 0.1915362924337387,
+        "Emergency Room": 0.009364082477986813
+      },
+      "symptoms_text": "throat slightly sore since yesterday morning no fever no swallowing problems"
+    },
+    {
+      "case_id": 47,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 4,
+      "probs": {
+        "Home Care": 0.7232794165611267,
+        "Clinic Visit": 0.26565027236938477,
+        "Emergency Room": 0.011070270091295242
+      },
+      "symptoms_text": "my usual period cramps day one mild flow paracetamol helps"
+    },
+    {
+      "case_id": 48,
+      "expected": "Home Care",
+      "predicted": "Clinic Visit",
+      "match": false,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.5293401479721069,
+        "Clinic Visit": 0.4620393216609955,
+        "Emergency Room": 0.00862050149589777
+      },
+      "symptoms_text": "bumped my knee against a table two hours ago painful purple bruise no cut"
+    },
+    {
+      "case_id": 49,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 5,
+      "probs": {
+        "Home Care": 0.7576150894165039,
+        "Clinic Visit": 0.23232795298099518,
+        "Emergency Room": 0.010057018138468266
+      },
+      "symptoms_text": "red painful skin on my shoulders after a day at the beach no blisters no fever"
+    },
+    {
+      "case_id": 50,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adult",
+      "fired_flags": [],
+      "esi": 4,
+      "probs": {
+        "Home Care": 0.6343228220939636,
+        "Clinic Visit": 0.35859137773513794,
+        "Emergency Room": 0.007085809484124184
+      },
+      "symptoms_text": "sore legs and shoulders today after first gym session yesterday no fever no injury"
+    }
+  ]
+}

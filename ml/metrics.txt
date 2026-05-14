@@ -1,0 +1,24 @@
+ASHA-AI 50-Case Evaluation - Plan 2.0 Results
+==================================================
+Model version:              v0.2.0 (XGBoost, rule-grounded synthetic training set)
+Triage cases evaluated:     49 of 50 (1 REFUSAL case routed via safety layer)
+
+Overall accuracy:           81.6%
+Emergency-bucket recall:    100.0%   (target: 100%; zero missed emergencies)
+Emergency misses:           0 of 15
+Macro-F1:                   0.817
+
+Per-class:
+  Home Care       precision= 84.6%  recall= 78.6%  f1=0.815
+  Clinic Visit    precision= 87.5%  recall= 70.0%  f1=0.778
+  Emergency Room  precision= 75.0%  recall=100.0%  f1=0.857
+
+Confusion matrix (rows=expected, cols=predicted):
+                  Home   Clinic   ER
+  Home Care        11       2       1
+  Clinic Visit      2      14       4
+  Emergency Room      0       0      15
+
+Rule trigger counts: R1_STEMI=2, R2_STROKE_FAST=3, R3_ANAPHYLAXIS=1, R4_SEPSIS=1, R5_DKA=1, R6_PEDIATRIC=3, R7_ASTHMA_SEVERE=2, R8_HEMORRHAGE=2, R9_SUICIDAL=1
+
+Refusals: 1 of 1 handled (case 9: drug-dosing -> safety refusal layer, not triaged).

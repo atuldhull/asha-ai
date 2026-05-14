@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: asha-ai-backend
+    env: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: FRONTEND_ORIGIN
+        value: https://asha-ai.vercel.app
+      - key: VERCEL_PREVIEW_ORIGIN_REGEX
+        value: ^https://.*\.vercel\.app$

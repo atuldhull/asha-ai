@@ -1,0 +1,46 @@
+import type { Metadata, Viewport } from 'next';
+import { Inter, Noto_Sans_Devanagari } from 'next/font/google';
+import { DisclaimerFooter } from '@/components/DisclaimerFooter';
+import { Providers } from './providers';
+import './globals.css';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const notoDevanagari = Noto_Sans_Devanagari({
+  subsets: ['devanagari', 'latin'],
+  variable: '--font-devanagari',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+});
+
+export const metadata: Metadata = {
+  title: 'ASHA-AI · Triage decision support for rural India',
+  description:
+    'AI-assisted preliminary triage in your language. Decision support — not a substitute for professional medical advice.',
+  manifest: '/manifest.json',
+  applicationName: 'ASHA-AI',
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0a0e1a',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className={`${inter.variable} ${notoDevanagari.variable} dark`}>
+      <body className="min-h-screen flex flex-col bg-[#0a0e1a] text-[#e8ecf5] antialiased dark:bg-[#0a0e1a] dark:text-[#e8ecf5]">
+        <Providers>
+          <main className="flex-1 flex flex-col">{children}</main>
+          <DisclaimerFooter />
+        </Providers>
+      </body>
+    </html>
+  );
+}

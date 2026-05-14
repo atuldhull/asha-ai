@@ -1,0 +1,63 @@
+{
+  "version": "0.2.0",
+  "source": "Kaggle: Disease-Symptom Prediction (itachi9604/disease-symptom-description-dataset)",
+  "authored_by": "Role C (clinical-judgment mapping)",
+  "rationale": "Each of the 41 diseases in the Kaggle dataset is mapped to one of the three exact ASHA-AI care-level strings. Mapping is conservative — ambiguous diseases (e.g. Pneumonia, Asthma, Malaria) default to Clinic Visit; only diseases with consistently life-threatening presentations map to Emergency Room. Mild, self-limiting, or chronic-stable conditions map to Home Care. The Plan 2.0 rule layer (R1-R9 from RED_FLAGS.md) overrides this mapping when red-flag symptoms are present at inference time — see METHODOLOGY.md §P1.1.",
+  "care_levels": ["Home Care", "Clinic Visit", "Emergency Room"],
+  "mapping": {
+    "Fungal infection": "Home Care",
+    "Allergy": "Home Care",
+    "Common Cold": "Home Care",
+    "Acne": "Home Care",
+
+    "GERD": "Clinic Visit",
+    "Chronic cholestasis": "Clinic Visit",
+    "Drug Reaction": "Clinic Visit",
+    "Peptic ulcer diseae": "Clinic Visit",
+    "AIDS": "Clinic Visit",
+    "Diabetes ": "Clinic Visit",
+    "Gastroenteritis": "Clinic Visit",
+    "Bronchial Asthma": "Clinic Visit",
+    "Hypertension ": "Clinic Visit",
+    "Migraine": "Clinic Visit",
+    "Cervical spondylosis": "Clinic Visit",
+    "Jaundice": "Clinic Visit",
+    "Malaria": "Clinic Visit",
+    "Chicken pox": "Clinic Visit",
+    "Dengue": "Clinic Visit",
+    "Typhoid": "Clinic Visit",
+    "hepatitis A": "Clinic Visit",
+    "Hepatitis B": "Clinic Visit",
+    "Hepatitis C": "Clinic Visit",
+    "Hepatitis D": "Clinic Visit",
+    "Hepatitis E": "Clinic Visit",
+    "Alcoholic hepatitis": "Clinic Visit",
+    "Tuberculosis": "Clinic Visit",
+    "Pneumonia": "Clinic Visit",
+    "Dimorphic hemmorhoids(piles)": "Clinic Visit",
+    "Varicose veins": "Clinic Visit",
+    "Hypothyroidism": "Clinic Visit",
+    "Hyperthyroidism": "Clinic Visit",
+    "Osteoarthristis": "Clinic Visit",
+    "Arthritis": "Clinic Visit",
+    "(vertigo) Paroymsal  Positional Vertigo": "Clinic Visit",
+    "Urinary tract infection": "Clinic Visit",
+    "Psoriasis": "Clinic Visit",
+    "Impetigo": "Clinic Visit",
+
+    "Heart attack": "Emergency Room",
+    "Paralysis (brain hemorrhage)": "Emergency Room",
+    "Hypoglycemia": "Emergency Room"
+  },
+  "bucket_counts_expected": {
+    "Home Care": 4,
+    "Clinic Visit": 34,
+    "Emergency Room": 3
+  },
+  "notes": [
+    "Kaggle disease names include trailing whitespace and typos verbatim (e.g. 'Diabetes ', 'Osteoarthristis', 'Peptic ulcer diseae'). Map keys preserve them so DataFrame .map() succeeds without preprocessing.",
+    "Hypoglycemia is mapped to Emergency Room conservatively — severe hypoglycemia (altered consciousness, seizure) is ESI Level 1; mild presentations would clinically be Home Care with oral glucose. The classifier sees symptom multi-hot vectors, not severity grading, so the conservative bucket is correct for safety.",
+    "Bronchial Asthma maps to Clinic Visit; the R7 red-flag rule (cannot_speak_full_sentences, SpO2<92) elevates severe presentations to Emergency Room at inference time.",
+    "Malaria, Dengue, Pneumonia map to Clinic Visit; if vitals + sepsis-qSOFA criteria are met at inference, R4 escalates to Emergency Room."
+  ]
+}
