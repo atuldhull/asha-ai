@@ -157,11 +157,21 @@ jobs:
       - name: Care-level string discipline (must remain exact English)
         run: |
           set -e
-          # Forbid any paraphrasing of the three exact care-level strings in code/docs.
-          if grep -rE "'(home care|clinic visit|emergency room)'" --include="*.py" --include="*.ts" --include="*.tsx" -i . | grep -vE "'(Home Care|Clinic Visit|Emergency Room)'" | head -5; then
-            echo "::error::Found case-incorrect care-level string. Care-level English strings MUST be exact: Home Care / Clinic Visit / Emergency Room."
+          # Forbid case-incorrect care-level strings in code (single-quoted
+          # literals only — comments/docstrings are out of scope). The grep
+          # pipeline must NOT gate an `if` directly: `head` always exits 0,
+          # which made this check a false-positive-by-construction. Capture
+          # the matches into a variable instead and test that it's non-empty.
+          matches="$(grep -rEn "'(home care|clinic visit|emergency room)'" \
+            --include='*.py' --include='*.ts' --include='*.tsx' -i . 2>/dev/null \
+            | grep -vE "'(Home Care|Clinic Visit|Emergency Room)'" \
+            | grep -vE '/(node_modules|\.venv|\.next|dist|build)/' || true)"
+          if [ -n "$matches" ]; then
+            echo "::error::Found case-incorrect care-level string(s). Care-level English strings MUST be exact: Home Care / Clinic Visit / Emergency Room."
+            echo "$matches" | head -20
             exit 1
           fi
+          echo "care-level string discipline: clean"
 
       - name: Disclaimer presence sanity check
         run: |
