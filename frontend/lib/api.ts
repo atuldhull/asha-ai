@@ -19,11 +19,19 @@ export async function postTriage(req: TriageRequest): Promise<TriageResponse> {
     return mockTriage(req);
   }
 
+  // Hard timeout. A backend that's unreachable, cold-starting (Render free
+  // tier sleeps after 15 min idle), or stalled would otherwise hang `fetch`
+  // FOREVER — a stalled connection never throws, so the catch below would
+  // never fire → infinite "Analyzing…" spinner. Abort after 15s and fall
+  // back to the deterministic keyword mock so the UI ALWAYS resolves.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
   try {
     const res = await fetch(`${API_BASE}/api/v1/triage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
@@ -32,8 +40,10 @@ export async function postTriage(req: TriageRequest): Promise<TriageResponse> {
 
     return (await res.json()) as TriageResponse;
   } catch (err) {
-    console.error('Triage API failed, falling back to mock:', err);
+    console.error('Triage API failed/timed out, falling back to mock:', err);
     return mockTriage(req);
+  } finally {
+    clearTimeout(timer);
   }
 }
 

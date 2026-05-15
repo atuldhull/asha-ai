@@ -15,17 +15,24 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
 
 export async function computeRisk(req: RiskComputeRequest): Promise<RiskAssessment> {
   if (!API_BASE) return mockComputeRisk(req);
+  // Same hard-timeout reasoning as postTriage — never let a stalled backend
+  // hang the verdict path forever. 8s is enough; risk is a fast endpoint.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8_000);
   try {
     const res = await fetch(`${API_BASE}/api/v1/risk/compute`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req),
+      signal: controller.signal,
     });
     if (!res.ok) throw new Error(`Risk API returned ${res.status}`);
     return (await res.json()) as RiskAssessment;
   } catch (err) {
-    console.warn('Risk API failed, falling back to mock:', err);
+    console.warn('Risk API failed/timed out, falling back to mock:', err);
     return mockComputeRisk(req);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
