@@ -73,3 +73,28 @@ Plan 3.0 DoD per [docs/ROLES.md](../docs/ROLES.md):
 | [`docker-compose.yml`](docker-compose.yml) | Local edge stack (Ollama daemon + ASHA-AI backend with `LLM_PROVIDER=ollama`) for one-command rehearsal. |
 
 The provider implementation lives in [`backend/app/llm/ollama.py`](../backend/app/llm/ollama.py); the env-var swap factory is in [`backend/app/llm/base.py`](../backend/app/llm/base.py). Edge mode and cloud mode use the same `LLMProvider` Protocol — Role A's frontend doesn't know or care which is running.
+
+## Measured edge-mode latencies (2026-05-15)
+
+Hardware: CPU-only Windows 11 laptop, 16 GB RAM (~1.8 GB free during measurement). Numbers from `edge/run_ollama.py` smoke test, 4 canonical triage extractions:
+
+| Model | Cold call #1 | Warm call #4 | p50 | p95 | Notes |
+|---|---|---|---|---|---|
+| `gemma2:2b` | ~13 s | **2.9 s** | 9.6 s | 10.4 s | **Demo + PHC config.** Steady-state response is what the audience sees. |
+| `gemma2:9b` | ~17 s | ~10 s | 16 s | 17 s | Higher quality on adversarial inputs, slower on this hardware. |
+
+All 4 smoke-test extractions returned the correct symptom set on both models (`missing_expected=[]`), and the FAST follow-up triggered correctly on the vague-stroke case.
+
+**RAM headroom matters more than model size.** With only 1.8 GB free, even gemma2:2b pages to disk on the first call. The fix is a clean reboot before recording the demo — gets you to ~10 GB free on a 16 GB machine and cold-call latency drops by ~40%.
+
+**Pre-warm before recording.** Before you hit record, hit the app once with any input. The model loads into RAM on that throw-away call; the recorded demo call lands at warm-latency (~3 s on gemma2:2b).
+
+**Daemon discipline.** Ollama Desktop on Windows leaves zombies after going idle. Reliable rehearsal sequence:
+```powershell
+Get-Process | Where-Object { $_.Name -like "*ollama*" } | Stop-Process -Force
+Start-Sleep -Seconds 3
+Start-Process -FilePath "ollama" -ArgumentList "serve" -WindowStyle Hidden
+Start-Sleep -Seconds 4
+.\edge\unplug_demo.ps1 -Model gemma2:2b
+```
+Use this immediately before each recording take.

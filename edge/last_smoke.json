@@ -1,0 +1,72 @@
+{
+  "ok": true,
+  "provider": "ollama",
+  "version": "gemma2:2b",
+  "is_offline": true,
+  "checks": [
+    {
+      "name": "daemon",
+      "available": true,
+      "base_url": "http://localhost:11434",
+      "configured_model": "gemma2:2b",
+      "installed_models": [
+        "gemma2:9b",
+        "gemma2:2b",
+        "qwen2.5:7b"
+      ],
+      "model_present": true
+    },
+    {
+      "name": "extract_acs_typical",
+      "ok": true,
+      "latency_s": 13.007,
+      "symptoms": [
+        "chest_pain",
+        "diaphoresis",
+        "radiation_arm"
+      ],
+      "needs_followup": false,
+      "missing_expected": []
+    },
+    {
+      "name": "extract_vague_stroke",
+      "ok": true,
+      "latency_s": 10.357,
+      "symptoms": [
+        "arm_weakness",
+        "sudden_confusion"
+      ],
+      "needs_followup": true,
+      "missing_expected": []
+    },
+    {
+      "name": "extract_common_cold",
+      "ok": true,
+      "latency_s": 8.926,
+      "symptoms": [
+        "mild_sore_throat",
+        "runny_nose"
+      ],
+      "needs_followup": false,
+      "missing_expected": []
+    },
+    {
+      "name": "extract_suicidal",
+      "ok": true,
+      "latency_s": 2.935,
+      "symptoms": [
+        "suicidal_ideation"
+      ],
+      "needs_followup": false,
+      "missing_expected": []
+    }
+  ],
+  "latencies_s": [
+    13.006601500004763,
+    10.356867900001816,
+    8.926344100007555,
+    2.934783000004245
+  ],
+  "p50_latency_s": 9.642,
+  "p95_latency_s": 10.357
+}

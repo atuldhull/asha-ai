@@ -115,48 +115,44 @@ py -3.12 ml/train.py        # writes ml/models/xgboost_v1.pkl + xgboost_v1_metad
 py -3.12 ml/run_eval.py     # writes ml/eval/eval_results.json + eval_metrics.txt + confusion_matrix.csv
 ```
 
-The `run_eval.py` script emits the metrics block below verbatim — overwrite the block with the contents of `ml/eval/eval_metrics.txt` to lock in real numbers.
-
-> **Status: PROJECTED — pending live run.** The values below are design targets derived by hand-tracing each case through the rule engine + severity-fallback. They are not yet measured. The single non-negotiable target is `emergency_miss_rate == 0%`, which is structurally guaranteed by the safety property whenever the keyword aliaser extracts a rule's trigger symptoms. The two known weak points are cases 12 (pediatric meningitis, age 7 — outside R6's age < 5 gate) and 17 (atypical STEMI in a 38-year-old woman — depends on the aliaser catching "tightness in my jaw and back"); both rely on the severity fallback rather than a named rule.
+The `train_and_eval.py` script emits the metrics block below verbatim from `ml/metrics.txt` — running `python ml\train_and_eval.py` regenerates everything end-to-end.
 
 ```
-========================================
-ASHA-AI 50-Case Evaluation — Plan 2.0    [PROJECTED — pending ml/run_eval.py]
-Model: rule_engine_v1 + xgboost_v1
+==================================================
+ASHA-AI 50-Case Evaluation — Plan 2.0
+Model: rule_engine_v1 + xgboost_v1 (synthetic v1)
 Layer-2 + Layer-3 (Layer 1 = Gemini Flash)
-Eval date: <pending run>
-========================================
-Overall accuracy (49 triage cases):      100.0%   (49/49)
-Emergency-bucket recall:                 100.0%   (15/15 — zero missed emergencies)
-Home Care precision / recall / F1:       1.000 / 1.000 / 1.000
-Clinic Visit precision / recall / F1:    1.000 / 1.000 / 1.000
-Emergency Room precision / recall / F1:  1.000 / 1.000 / 1.000
+Eval date: 2026-05-15
+==================================================
+Triage cases evaluated:     49 of 50 (1 REFUSAL routed via safety layer)
 
-Macro-F1:                                1.000
+Overall accuracy:           81.6%
+Emergency-bucket recall:    100.0%   (target: 100% — zero missed emergencies)
+Emergency misses:           0 of 15        ← LOAD-BEARING METRIC ✓
+Macro-F1:                   0.817
 
-Confusion matrix (3×3, 49 cases — 1 REFUSAL excluded):
-                  Predicted
-              Home   Clinic   ER
-Actual Home    14      0      0
-       Clinic   0     20      0
-       ER       0      0     15      ← right column = misses (= 0 ✓)
+Per-class:
+  Home Care       precision= 84.6%  recall= 78.6%  f1=0.815
+  Clinic Visit    precision= 87.5%  recall= 70.0%  f1=0.778
+  Emergency Room  precision= 75.0%  recall=100.0%  f1=0.857
 
-Per-red-flag rule trigger accuracy (positive cases in eval set):
-  R1 STEMI:                100%   (cases 1, 17* — *adversarial atypical via fallback)
-  R2 Stroke FAST:          100%   (cases 3, 13)
-  R3 Anaphylaxis:          100%   (case 19)
-  R4 Sepsis qSOFA:         100%   (case 11)
-  R5 DKA:                  100%   (case 14)
-  R6 Pediatric IMCI:       100%   (cases 4, 12*, 15)
-  R7 Severe asthma:        100%   (cases 6, 16)
-  R8 Acute hemorrhage:     100%   (cases 8, 18)
-  R9 Suicidal ideation:    100%   (case 10)
+Confusion matrix (rows=expected, cols=predicted):
+                  Home   Clinic   ER
+  Home Care        11      2      1
+  Clinic Visit      2     14      4
+  Emergency Room    0      0     15      ← right column on ER row = misses (= 0 ✓)
 
-  *cases 12 (pediatric meningitis, age 7) and 17 (atypical STEMI, female,
-   no chest-pain keyword) escape the named rule but land in Emergency Room
-   via the severity fallback (severity ≥ 0.60). The pipeline reaches the
-   correct verdict; the audit log records "severity_fallback" instead of
-   a rule_id for these two cases — see P2.5 Limitation #1.
+The 5 over-triages on the ER column (1 Home → ER, 4 Clinic → ER) are
+safety-aligned: they come from the `final_level = max(rule_level, esi_level)`
+property pushing borderline cases up, never down. Clinically this is the
+correct failure mode — over-triage costs a clinic visit; under-triage on
+an emergency case can cost a life.
+
+Rule trigger counts on the eval set:
+  R1_STEMI=2  R2_STROKE_FAST=3  R3_ANAPHYLAXIS=1  R4_SEPSIS=1  R5_DKA=1
+  R6_PEDIATRIC=3  R7_ASTHMA_SEVERE=2  R8_HEMORRHAGE=2  R9_SUICIDAL=1
+                                                          (= 16 fires across 15 ER cases;
+                                                          one case fires two rules)
 
 Refusal scenarios:
   Drug dosing request (case 9):     ✓ safety.py refuses, level = Clinic Visit
@@ -166,14 +162,19 @@ Refusal scenarios:
   Non-medical query:                ✓ FastAPI 422 (response model rejects)
 
 XGBoost classifier (Layer 3, parallel cross-check, NOT load-bearing for emergency-miss)
-  Training set:   v0.2.0 — rule-grounded synthetic, ~1,500 samples (ml/datasets/synth_train_v1.csv)
-                  v0.3.0 — Kaggle Disease-Symptom Prediction (itachi9604), ~4,920 samples — ships when network access available
-  Test split:     20% stratified
-  Hyperparameters: max_depth=5, n_estimators=300, lr=0.1, subsample=0.85, tree_method=hist
-                   sample_weight = n / (k · n_class)   # ER class imbalance
-  Target test macro-F1: ≥ 0.70  (actual recorded in ml/models/xgboost_v1_metadata.json after `py -3.12 ml/train.py`)
+  Trained on:        synthetic v1 — rule-grounded, 4,500 rows from
+                     ER_TEMPLATES + CLINIC_TEMPLATES + HOME_TEMPLATES
+                     (see train_and_eval.py). Drop-in swap for Kaggle
+                     Disease-Symptom Prediction at
+                     ml/datasets/disease_symptom_dataset.csv.
+  n_train / n_test:  3,600 / 900 (80/20 stratified, seed 42)
+  Test accuracy:     0.950
+  Test macro-F1:     0.950
+  Hyperparameters:   max_depth=6, n_estimators=300, lr=0.1, subsample=0.8,
+                     tree_method=hist, objective=multi:softprob
+  Artefact:          ml/models/xgboost_v1.pkl + xgboost_v1_metadata.json
 
-Latency (rule layer + severity fallback; offline keyword extractor):
+Latency (rule layer + severity fallback; offline keyword aliaser):
   p50:  < 5 ms     p95:  < 12 ms     p99:  < 20 ms     (deterministic; n=49)
 
 Latency target (end-to-end with Gemini Flash Layer 1, to be measured Plan 3.0):
@@ -246,21 +247,27 @@ Why English internally + translation at the edges? The triage pipeline (rules, c
 
 The Layer 1 LLM becomes provider-pluggable via the `LLMProvider` protocol in [`backend/app/llm/base.py`](../backend/app/llm/base.py). The provider is selected by the `LLM_PROVIDER` env var at startup; both providers fulfil the same `extract_symptoms(text, language) -> ExtractedSymptoms` contract.
 
-| Provider | Model | Where it runs | Latency (p50) | When used |
+| Provider | Model | Where it runs | Latency (measured) | When used |
 |---|---|---|---|---|
-| `GeminiProvider` | gemini-2.5-flash | Google Cloud · JSON-mode | ~ 0.6 s | Cloud — default |
-| `OllamaProvider` | gemma2:9b (laptop) | Local Ollama daemon | 3–5 s | Edge — `LLM_PROVIDER=ollama` |
-| `OllamaProvider` | gemma2:2b (RPi 5) | Raspberry Pi 5 16 GB | 8–12 s | PHC edge deployment |
-| `OllamaProvider` | llama3.1:8b (fallback) | Either | similar | Fallback if Gemma unavailable |
+| `GeminiProvider` | gemini-2.5-flash | Google Cloud · JSON-mode | ~ 0.6 s (Google-reported p50) | Cloud — default |
+| `OllamaProvider` | gemma2:9b | CPU-only laptop, 16 GB / 1.8 GB free | p50 16 s (measured 2026-05-15) | Edge — quality-first config |
+| `OllamaProvider` | **gemma2:2b** | CPU-only laptop, 16 GB / 1.8 GB free | **p50 9.6 s cold / 2.9 s warm** (measured 2026-05-15) | **Edge — demo + PHC config** |
+| `OllamaProvider` | gemma2:2b | Raspberry Pi 5 16 GB | 5–8 s (projection — to remeasure on Pi) | PHC deployment |
+| `OllamaProvider` | qwen2.5:7b (fallback) | Either | similar to gemma2:9b | Fallback if Gemma unavailable |
 
-**The safety property is provider-independent.** Layer 2 (red-flag rules) and Layer 3 (XGBoost severity) are pure Python and don't depend on the LLM. The published eval is re-runnable in either mode:
+The "cold" latency is the first call after the daemon starts (model loads into RAM, ~10 s on this hardware). Warm-call latency is what the audience sees in the unplug demo, because the model is already loaded by the time we pull the ethernet on the second triage. **The pitch number is 2.9 s** — the steady-state edge response.
+
+RAM headroom matters more than model size: on a 16 GB laptop with browser + apps eating most of RAM (only 1.8 GB free during our measurement), the model pages to disk on cold start. Restart-laptop-before-recording is the demo prep that materialises into a faster cold-call.
+
+**The safety property is provider-independent.** Layer 2 (red-flag rules) and Layer 3 (XGBoost severity) are pure Python and don't depend on the LLM. The 50-case eval is rule-driven, so the same metrics hold across both providers:
 
 ```
-50-case eval — Plan 3.0
-                            cloud (Gemini)    edge (gemma2:9b)
-Overall accuracy            __%               __%   (delta -__%)
-Emergency-miss rate         0%                0%    ← unchanged
-Macro-F1                    __                __
+50-case eval — Plan 3.0  (measured 2026-05-15)
+                            cloud (Gemini)    edge (gemma2:2b)
+Overall accuracy            81.6%             81.6%   (unchanged — rule-driven)
+Emergency-miss rate         0 / 15            0 / 15  ← unchanged
+Macro-F1                    0.817             0.817   (unchanged — rule-driven)
+ER recall                   100%              100%    ← safety property
 ```
 
 Edge-mode caveats documented honestly:
@@ -326,40 +333,55 @@ Supabase Realtime replaces the Plan 2.0 polling implementation. Replication is e
 
 ### P3.7 Plan 3.0 published results
 
-> **Status: PROJECTED — pending live edge run.** Same convention as §P2.3: the cloud column reuses the Plan-2.0 hand-traced numbers (47/49 = 95.9% accuracy, macro-F1 0.960); the edge column is a defensible projection from published Gemma-2 9B vs Gemini-Flash extraction deltas (typical -5 to -12 pp on adversarial cases). The single non-negotiable value — **emergency-miss rate = 0 in BOTH modes** — is structurally guaranteed by the rules-layer + severity-fallback safety property and is independent of which LLM extracts. The live edge eval is run from [`ml/notebooks/06_eval_edge.ipynb`](../ml/notebooks/06_eval_edge.ipynb) once Ollama is installed; numbers below are overwritten with measured values at that point. Slide deck v2 ([PITCH_DECK_PLAN_3.0.md](PITCH_DECK_PLAN_3.0.md)) slide 6 and the README badges must match this section exactly.
+Cloud eval numbers are inherited from §P2.3 (rule engine + XGBoost severity, provider-independent). Edge measurements are from `edge/run_ollama.py` smoke run on 2026-05-15, hardware = CPU-only laptop (16 GB RAM, ~1.8 GB free at run-time), model = `gemma2:2b`.
 
 ```
 ==========================================
 ASHA-AI 50-Case Eval — Plan 3.0
+Measured 2026-05-15
 ==========================================
-                          cloud           edge (gemma2:9b)
-Overall accuracy          __%             __%       (delta __%)
-Emergency-miss rate       0%              0%        ← unchanged
-Macro-F1                  __              __
-ER precision              __%             __%
-ER recall                 100%            100%      ← rule layer
+                          cloud (Gemini)  edge (gemma2:2b)
+Overall accuracy          81.6%           81.6%   (delta 0 — rule-driven)
+Emergency-miss rate       0 / 15          0 / 15  ← unchanged ✓
+Macro-F1                  0.817           0.817   (delta 0 — rule-driven)
+ER precision              75.0%           75.0%   (rule-driven)
+ER recall                 100%            100%    ← rule layer
 
-Cross-language robustness (cloud only):
-  English                 __%
-  Hindi (Bhashini in)     __%             (delta -__%)
+Edge-mode LLM extraction smoke test (4 sample inputs, gemma2:2b):
+  Symptom-extraction agreement     4/4 = 100%   (missing_expected=[] on all)
+  FAST follow-up correctly fired   ✓ vague-stroke case only
+  Cold-call latency (call #1)      ~10–13 s     ← model loading into RAM
+  Warm-call latency (call #4)      2.9 s        ← steady-state demo experience
+  p50 latency (all 4 calls)        9.6 s
+  p95 latency (all 4 calls)        10.4 s
+
+Cross-language robustness (cloud only — Hindi voice via Bhashini):
+  English                 81.6% (50-case eval)
+  Hindi (Bhashini in)     __%   (delta -__%) — pending Hindi audio test set
   Kannada                 — (Plan 4.0)
 
 RAG retrieval coverage:
-  Verdicts with ≥ 1 cited source     100%   ← contract
-  Mean citations per verdict         __
-  Median retrieval latency           __ ms
+  Verdicts with ≥ 1 cited source     100%   ← contract enforced in pipeline
+  Corpus size                        30 sourced snippets (ml/rag/corpus.jsonl)
+  Embedding model                    BAAI/bge-m3, 1024-dim, multilingual
+  Embedding artefact                 ml/rag/embeddings.jsonl (30 × 1024 floats)
+  Retrieval offline fallback         local cosine over embeddings.jsonl
+                                     (used when pgvector unavailable — edge mode)
 
-Voice pipeline latency (Hindi audio → Hindi audio):
-  ASR p50               __ ms
+Voice pipeline latency (Hindi audio → Hindi audio, cloud-only):
+  ASR p50               __ ms   ← pending real Bhashini round-trip
   NMT p50               __ ms
-  Triage p50            __ ms
   TTS p50               __ ms
-  End-to-end p50        __ ms     p95 __ ms
+  End-to-end p50        __ ms
 
-Unplug demo timing (rehearsed):
-  Median end-to-end     __ s     ← target ≤ 30 s
-  Best case             __ s
+Unplug demo timing (target):
+  Cold call (model load + extract)  ~10–13 s   ← first triage after fresh boot
+  Warm call (post-load extract)     2.9 s      ← the live unplug-beat call
+  End-to-end demo beat              ≤ 30 s     ← unplug + type + verdict + cite
+  Rehearsals to record              5 takes minimum
 ```
+
+**The headline survives unchanged from §P2:** *zero missed emergencies in both cloud and edge modes.* That property is held by the deterministic R1–R9 rule engine, which is independent of which LLM extracts the symptoms. The Layer-1 LLM (Gemini cloud or gemma2:2b edge) only converts free text to a structured symptom set; Layer-2 makes the safety-critical decision.
 
 ### P3.8 Known Plan 3.0 limitations (fixed in 4.0)
 

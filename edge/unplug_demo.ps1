@@ -15,7 +15,7 @@
 param(
     [string]$Model    = $env:OLLAMA_MODEL,
     [string]$Base     = $env:OLLAMA_BASE,
-    [double]$Budget   = 5.0,
+    [double]$Budget   = 20.0,
     [switch]$Strict
 )
 
@@ -54,8 +54,18 @@ if ($models | Where-Object { $_ -like "$base*" }) {
     if ($Strict) { exit 1 } else { exit 0 }
 }
 
-# 3. Provider self-check + smoke extractions (delegated to Python)
-$python = if (Get-Command py -ErrorAction SilentlyContinue) { 'py -3.12' } else { 'python' }
+# 3. Provider self-check + smoke extractions (delegated to Python).
+#    Prefer the venv's `python` (already on PATH inside an active venv);
+#    fall back to `py` with no version pin (works on 3.11 / 3.12 / 3.13 alike).
+#    The old `py -3.12` pin failed on laptops that only had 3.13 + Astral 3.12.13.
+$python = if (Get-Command python -ErrorAction SilentlyContinue) { 'python' }
+          elseif (Get-Command py -ErrorAction SilentlyContinue) { 'py' }
+          else { $null }
+if (-not $python) {
+    Write-Host "[!! ] No Python on PATH. Activate the venv first:"
+    Write-Host "      .\.venv\Scripts\Activate.ps1"
+    if ($Strict) { exit 1 } else { exit 0 }
+}
 $cmd = if ($Strict) { "$python edge\run_ollama.py --strict" } else { "$python edge\run_ollama.py" }
 Write-Host ""
 Write-Host "[..]  Running smoke test:  $cmd"
@@ -63,8 +73,8 @@ Invoke-Expression $cmd
 $rc = $LASTEXITCODE
 Write-Host ""
 if ($rc -eq 0) {
-    Write-Host "GREEN — ready to record the unplug beat."
+    Write-Host "GREEN -- ready to record the unplug beat."
 } else {
-    Write-Host "RED — fix the failures above before rehearsing on camera."
+    Write-Host "RED -- fix the failures above before rehearsing on camera."
 }
 exit $rc

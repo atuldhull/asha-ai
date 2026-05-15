@@ -228,8 +228,8 @@ Plan 3.0 unlocks **Innovation 25%** with two features no other team will have: *
             │   │ LAYER 1 — LLMProvider (env-var swap)        │ │
             │   │ ┌─────────────┐  ┌──────────────────────┐   │ │
             │   │ │ GeminiProv  │  │ OllamaProvider       │   │ │
-            │   │ │ 2.5 Flash   │  │ gemma2:9b / phi3:3.8b │   │ │
-            │   │ │ (cloud)     │  │ (edge / RPi 5)       │   │ │
+            │   │ │ 2.0 Flash   │  │ gemma2:9b (laptop)   │   │ │
+            │   │ │ (cloud)     │  │ gemma2:2b (RPi 5)    │   │ │
             │   │ └──────┬──────┘  └────────┬─────────────┘   │ │
             │   │        └──────same schema──┘                 │ │
             │   │   → ExtractedSymptoms JSON                    │ │
@@ -268,10 +268,26 @@ Plan 3.0 unlocks **Innovation 25%** with two features no other team will have: *
                                  ▼
             ┌──────────────────────────────────────────────────┐
             │  Doctor cockpit subscribes to verdicts channel    │
-            │  Animated insertion · audio chime on ER · sorted  │
-            │  by ESI · click → 3-tier differential view        │
+            │  Animated insertion · ER audio ping               │
+            │  (/sounds/er-alert.mp3 · respects autoplay)       │
+            │  sorted by ESI · click → 3-tier differential view │
+            │  (driven by docs/differentials.json — one row     │
+            │  per red-flag rule R1–R9)                          │
             │                                                   │
             │  (No more polling — < 1s latency end-to-end)      │
+            └──────────────────────────────────────────────────┘
+
+            ┌──────────────────────────────────────────────────┐
+            │  Connection-status indicator — the unplug signal  │
+            │                                                   │
+            │  Nav badge polls GET /api/v1/edge-status every 5s │
+            │   provider="cloud"  → 🌐 Cloud   (Gemini 2.0 Flash)│
+            │   provider="edge"   → 📡 Edge    (Ollama + Gemma)  │
+            │   unreachable       → ⚠  Offline                  │
+            │                                                   │
+            │  When the demo pulls the ethernet cable, the      │
+            │  badge flips cloud → edge within 5 s. That is the │
+            │  camera-captured visual of the unplug moment.     │
             └──────────────────────────────────────────────────┘
 
                    ╔═══════════════════════════════════════════╗

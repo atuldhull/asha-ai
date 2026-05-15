@@ -33,7 +33,11 @@ from statistics import median
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
-LATENCY_BUDGET_S = float(os.getenv("EDGE_LATENCY_BUDGET_S", "5.0"))
+LATENCY_BUDGET_S = float(os.getenv("EDGE_LATENCY_BUDGET_S", "20.0"))
+# 20 s is the realistic edge-mode default for a CPU-only laptop running
+# gemma2:9b (Q4_0). Override with EDGE_LATENCY_BUDGET_S or `-Budget` for
+# tighter targets: 5 s on GPU-laptop, 8 s on CPU-laptop with gemma2:2b,
+# 12 s on Raspberry Pi 5 16 GB with gemma2:2b.
 
 SAMPLES = [
     # (label, text, expected substrings in symptom names)
@@ -148,8 +152,8 @@ def render(out: dict) -> str:
         lines.append(f"latency  p50={out['p50_latency_s']}s  p95={out['p95_latency_s']}s "
                      f"  budget={LATENCY_BUDGET_S}s")
     lines.append("")
-    lines.append("verdict:  " + ("GREEN — ready for unplug demo" if out.get("ok")
-                                  else "RED — DO NOT DEMO; fix the failures above"))
+    lines.append("verdict:  " + ("GREEN -- ready for unplug demo" if out.get("ok")
+                                  else "RED -- DO NOT DEMO; fix the failures above"))
     return "\n".join(lines)
 
 

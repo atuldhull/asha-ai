@@ -1,4 +1,11 @@
-import { TriageRequest, TriageResponse, DISCLAIMER, CareLevel } from './types';
+import {
+  type CareLevel,
+  type MentalHealthHelpline,
+  type TriageRequest,
+  type TriageResponse,
+  type VoiceTranscribeResponse,
+  DISCLAIMER,
+} from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
 
@@ -133,3 +140,77 @@ export function isUsingMock(): boolean {
 // Some files import `triage`, others `postTriage`. Both point to the same fn.
 // ---------------------------------------------------------------------------
 export const triage = postTriage;
+
+// ---------------------------------------------------------------------------
+// Plan 3.0 endpoints (voice + helplines + profile language sync)
+// ---------------------------------------------------------------------------
+
+/**
+ * POST audio to Bhashini-backed `/api/v1/voice/transcribe` via the Next.js
+ * Edge proxy. Returns the English transcript (use as triage input) and the
+ * verdict already computed server-side.
+ *
+ * Throws if the backend isn't configured for voice (503).
+ */
+export async function voiceTranscribe(
+  blob: Blob,
+  lang: 'en' | 'hi' | 'kn' = 'en',
+  authToken?: string,
+): Promise<VoiceTranscribeResponse> {
+  const fd = new FormData();
+  const ext = blob.type.includes('webm') ? 'webm' : blob.type.includes('mp4') ? 'mp4' : 'wav';
+  fd.append('audio', blob, `audio.${ext}`);
+  fd.append('lang', lang);
+  const headers: Record<string, string> = {};
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
+  const res = await fetch('/api/voice/transcribe', { method: 'POST', body: fd, headers });
+  if (!res.ok) throw new Error(`Voice transcribe failed: ${res.status}`);
+  return (await res.json()) as VoiceTranscribeResponse;
+}
+
+/**
+ * Persist the user's preferred language to Supabase via the backend.
+ * Silently no-ops when the backend isn't configured — the frontend's
+ * localStorage copy is the source of truth in demo mode.
+ */
+export async function setLanguagePreference(
+  lang: 'en' | 'hi' | 'kn',
+  authToken: string,
+): Promise<void> {
+  if (!API_BASE || !authToken) return;
+  try {
+    await fetch(`${API_BASE}/api/v1/profile/language`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ language: lang }),
+    });
+  } catch (err) {
+    console.warn('Failed to sync language preference', err);
+  }
+}
+
+/**
+ * Fetch the canonical helpline directory from backend's
+ * `/api/v1/mental-health-check`. Anonymous-friendly (no auth required).
+ *
+ * Returns null when the backend isn't reachable — the frontend has hardcoded
+ * fallback helplines in MentalHealthScreen for that case.
+ */
+export async function fetchMentalHealthHelplines(): Promise<MentalHealthHelpline[] | null> {
+  if (!API_BASE) return null;
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/mental-health-check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { helplines?: MentalHealthHelpline[] };
+    return data?.helplines ?? null;
+  } catch {
+    return null;
+  }
+}

@@ -105,6 +105,19 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
             >
               {verdict.level}
             </span>
+            {verdict.esi != null && (
+              <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-0.5">
+                ESI {verdict.esi}
+              </span>
+            )}
+            {verdict.confidence != null && (
+              <span
+                className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400"
+                title={`Model confidence ${Math.round(verdict.confidence * 100)}%`}
+              >
+                {Math.round(verdict.confidence * 100)}% conf.
+              </span>
+            )}
             {isEmergency && (
               <span className="text-xs font-bold uppercase tracking-wider text-care-emergency">
                 Time-critical
@@ -173,26 +186,39 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
               </button>
               {showSources && (
                 <ul className="mt-2 space-y-2">
-                  {verdict.citations.map((src, i) => (
-                    <li
-                      key={i}
-                      className="rounded-md border border-slate-200/60 dark:border-slate-700/60 bg-white/40 dark:bg-slate-900/40 px-3 py-2 text-xs"
-                    >
-                      <div className="font-medium text-slate-800 dark:text-slate-200">
-                        {src.source}
-                        {src.section && (
-                          <span className="text-slate-500 ml-1.5 font-normal">
-                            · {src.section}
-                          </span>
+                  {verdict.citations.map((src, i) => {
+                    if (typeof src === 'string') {
+                      return (
+                        <li
+                          key={i}
+                          className="rounded-md border border-slate-200/60 dark:border-slate-700/60 bg-white/40 dark:bg-slate-900/40 px-3 py-2 text-xs text-slate-700 dark:text-slate-300"
+                        >
+                          {src}
+                        </li>
+                      );
+                    }
+                    const body = src.text ?? src.excerpt ?? null;
+                    return (
+                      <li
+                        key={i}
+                        className="rounded-md border border-slate-200/60 dark:border-slate-700/60 bg-white/40 dark:bg-slate-900/40 px-3 py-2 text-xs"
+                      >
+                        <div className="font-medium text-slate-800 dark:text-slate-200">
+                          {src.source}
+                          {src.section && (
+                            <span className="text-slate-500 ml-1.5 font-normal">
+                              · {src.section}
+                            </span>
+                          )}
+                        </div>
+                        {body && (
+                          <p className="mt-1 text-slate-600 dark:text-slate-400 italic leading-relaxed">
+                            “{body}”
+                          </p>
                         )}
-                      </div>
-                      {src.excerpt && (
-                        <p className="mt-1 text-slate-600 dark:text-slate-400 italic leading-relaxed">
-                          “{src.excerpt}”
-                        </p>
-                      )}
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>

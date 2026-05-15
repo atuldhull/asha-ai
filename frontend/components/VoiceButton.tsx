@@ -18,6 +18,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/I18nProvider';
+import { voiceTranscribe } from '@/lib/api';
+import { getSupabase } from '@/lib/supabase';
 
 const BHASHINI_ENABLED =
   typeof process !== 'undefined' &&
@@ -89,15 +91,23 @@ export function VoiceButton({ onTranscript, disabled }: VoiceButtonProps) {
       const blob = new Blob(chunksRef.current, { type: mimeType });
       setBusy(true);
       try {
-        const fd = new FormData();
-        fd.append('audio', blob, `audio.${mimeType.includes('webm') ? 'webm' : 'mp4'}`);
-        fd.append('lang', locale);
-        const r = await fetch('/api/voice/transcribe', { method: 'POST', body: fd });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const data = (await r.json()) as { transcript?: string };
-        if (data?.transcript) onTranscript(data.transcript);
+        // Pull a Supabase JWT if we have one — backend's voice route requires
+        // auth in non-mock mode (audio is PHI).
+        let token: string | undefined;
+        const sb = getSupabase();
+        if (sb) {
+          const { data } = await sb.auth.getSession();
+          token = data.session?.access_token ?? undefined;
+        }
+        const result = await voiceTranscribe(blob, locale, token);
+        // Backend returns the English transcript + the verdict already computed.
+        // Surface the English transcript to the parent so the chat UI can show
+        // what the system understood. The parent's submit flow may or may not
+        // re-run triage with the same text; that's idempotent.
+        if (result?.transcript_english) onTranscript(result.transcript_english);
+        else if (result?.transcript_source) onTranscript(result.transcript_source);
       } catch (e) {
-        console.error('Bhashini transcribe failed', e);
+        console.error('Voice transcribe failed', e);
       } finally {
         setBusy(false);
       }
