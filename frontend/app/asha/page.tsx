@@ -366,7 +366,7 @@ function AshaCockpitInner() {
                   {t('asha.nextPatient')}
                 </button>
               </header>
-              <VerdictCard verdict={verdict} />
+              <VerdictCard verdict={verdict} autoSpeak />
             </section>
           )}
 

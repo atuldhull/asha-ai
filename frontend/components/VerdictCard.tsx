@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
   Home,
@@ -13,12 +13,15 @@ import {
   ListChecks,
   AlertTriangle,
   Activity,
+  Volume2,
+  Pause,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { CareLevel, TriageResponse } from '@/lib/types';
 import { cn } from '@/lib/cn';
 import { useTranslation } from '@/lib/i18n/I18nProvider';
 import { playVerdictCue } from '@/lib/audio';
+import { speak, stopSpeaking, isSpeechSupported } from '@/lib/speech';
 import { canSimplify, toPlainEnglish } from '@/lib/plain-diagnosis';
 import { RiskTrajectoryCard } from './RiskTrajectoryCard';
 import { VerdictActions } from './VerdictActions';
@@ -34,6 +37,9 @@ const RiskOrb = dynamic(
 
 interface VerdictCardProps {
   verdict: TriageResponse;
+  /** Auto-read the verdict aloud on mount (live triage flows only — off in
+   *  chat history / replay so browsing doesn't trigger speech). */
+  autoSpeak?: boolean;
 }
 
 const config: Record<
@@ -83,7 +89,7 @@ const SUBTITLE_KEY: Record<CareLevel, string> = {
   'Emergency Room': 'verdict.emergencyRoom.subtitle',
 };
 
-export function VerdictCard({ verdict }: VerdictCardProps) {
+export function VerdictCard({ verdict, autoSpeak = false }: VerdictCardProps) {
   const c = config[verdict.level];
   const Icon = c.icon;
   const isEmergency = verdict.level === 'Emergency Room';
@@ -91,6 +97,11 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
   const { t, locale } = useTranslation();
   const [showSources, setShowSources] = useState(false);
   const [plainMode, setPlainMode] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+
+  const speechAvailable = isSpeechSupported();
+  const speechLang: 'en' | 'hi' | 'kn' =
+    locale === 'hi' || locale === 'kn' ? locale : 'en';
 
   const subtitle = locale !== 'en' ? t(SUBTITLE_KEY[verdict.level]) : null;
 
@@ -104,6 +115,13 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
     [plainMode, simplifyAvailable, verdict.reasoning],
   );
 
+  // What gets read aloud: localized lead-in (or the exact care level) + the
+  // reasoning the user is seeing. Plain-language mode flows through too.
+  const speechText = useMemo(
+    () => `${subtitle ?? verdict.level}. ${displayReasoning}`,
+    [subtitle, verdict.level, displayReasoning],
+  );
+
   // Plan 4.0 — fire audio cue + haptic on first mount of a verdict.
   // Honors user's mute preference + prefers-reduced-motion (handled inside playVerdictCue).
   useEffect(() => {
@@ -111,6 +129,44 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
     // Re-fire only when the level itself changes (not on every re-render).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [verdict.level]);
+
+  const toggleSpeak = useCallback(() => {
+    if (speaking) {
+      stopSpeaking();
+      setSpeaking(false);
+      return;
+    }
+    // Explicit tap → `force` so it works even if the user muted the cues.
+    speak(speechText, {
+      lang: speechLang,
+      force: true,
+      onstart: () => setSpeaking(true),
+      onend: () => setSpeaking(false),
+    });
+  }, [speaking, speechText, speechLang]);
+
+  // Auto-read fresh verdicts (live triage only). Honors the global mute
+  // preference (non-forced). Waits for the ~1s verdict cue to finish first.
+  useEffect(() => {
+    if (!autoSpeak || !speechAvailable) return;
+    const id = window.setTimeout(() => {
+      speak(speechText, {
+        lang: speechLang,
+        onstart: () => setSpeaking(true),
+        onend: () => setSpeaking(false),
+      });
+    }, 950);
+    return () => {
+      window.clearTimeout(id);
+      stopSpeaking();
+      setSpeaking(false);
+    };
+    // Re-read only when the verdict identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verdict.level, autoSpeak, speechAvailable]);
+
+  // Stop any speech if the card unmounts (navigation mid-utterance).
+  useEffect(() => () => stopSpeaking(), []);
 
   return (
     <motion.div
@@ -188,23 +244,47 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
             <p className="flex-1 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
               {displayReasoning}
             </p>
-            {simplifyAvailable && (
-              <button
-                type="button"
-                onClick={() => setPlainMode((v) => !v)}
-                aria-pressed={plainMode}
-                title={plainMode ? t('plainDiagnosis.toggleOff') : t('plainDiagnosis.toggleOn')}
-                className={cn(
-                  'flex-shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
-                  plainMode
-                    ? 'border-amber-500/50 bg-amber-500/10 text-amber-300'
-                    : 'border-slate-600 bg-slate-900/40 text-slate-400 hover:border-slate-500 hover:text-slate-200',
-                )}
-              >
-                <Sparkles className="h-3 w-3" aria-hidden />
-                <span>{plainMode ? t('plainDiagnosis.on') : t('plainDiagnosis.off')}</span>
-              </button>
-            )}
+            <div className="flex flex-shrink-0 flex-col items-end gap-1.5">
+              {speechAvailable && (
+                <button
+                  type="button"
+                  onClick={toggleSpeak}
+                  aria-pressed={speaking}
+                  aria-label={speaking ? t('verdict.stop') : t('verdict.listen')}
+                  title={speaking ? t('verdict.stop') : t('verdict.listen')}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
+                    speaking
+                      ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300'
+                      : 'border-slate-600 bg-slate-900/40 text-slate-400 hover:border-slate-500 hover:text-slate-200',
+                  )}
+                >
+                  {speaking ? (
+                    <Pause className="h-3 w-3" aria-hidden />
+                  ) : (
+                    <Volume2 className="h-3 w-3" aria-hidden />
+                  )}
+                  <span>{speaking ? t('verdict.stop') : t('verdict.listen')}</span>
+                </button>
+              )}
+              {simplifyAvailable && (
+                <button
+                  type="button"
+                  onClick={() => setPlainMode((v) => !v)}
+                  aria-pressed={plainMode}
+                  title={plainMode ? t('plainDiagnosis.toggleOff') : t('plainDiagnosis.toggleOn')}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
+                    plainMode
+                      ? 'border-amber-500/50 bg-amber-500/10 text-amber-300'
+                      : 'border-slate-600 bg-slate-900/40 text-slate-400 hover:border-slate-500 hover:text-slate-200',
+                  )}
+                >
+                  <Sparkles className="h-3 w-3" aria-hidden />
+                  <span>{plainMode ? t('plainDiagnosis.on') : t('plainDiagnosis.off')}</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="mt-4 rounded-lg bg-white/70 dark:bg-slate-900/40 p-3 border border-slate-200/60 dark:border-slate-700/60">

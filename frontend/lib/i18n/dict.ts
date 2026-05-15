@@ -76,6 +76,8 @@ export const DICTIONARIES: Record<Locale, Dict> = {
     'verdict.emergencyRoom.subtitle': 'Go to the emergency room',
     'verdict.sources': 'Sources',
     'verdict.notDiagnosis': 'Not a diagnosis. Decision support only.',
+    'verdict.listen': 'Listen',
+    'verdict.stop': 'Stop',
 
     /* mental health */
     'mh.title': "Please reach out — you're not alone.",
@@ -465,6 +467,8 @@ export const DICTIONARIES: Record<Locale, Dict> = {
     'verdict.emergencyRoom.subtitle': 'तुरंत अस्पताल जाएँ',
     'verdict.sources': 'स्रोत',
     'verdict.notDiagnosis': 'निदान नहीं — केवल सहायता।',
+    'verdict.listen': 'सुनें',
+    'verdict.stop': 'रोकें',
 
     'mh.title': 'कृपया मदद लें — आप अकेले नहीं हैं।',
     'mh.body':
@@ -846,6 +850,8 @@ export const DICTIONARIES: Record<Locale, Dict> = {
     'verdict.emergencyRoom.subtitle': 'ತಕ್ಷಣ ಆಸ್ಪತ್ರೆಗೆ',
     'verdict.sources': 'ಮೂಲಗಳು',
     'verdict.notDiagnosis': 'ರೋಗನಿರ್ಣಯ ಅಲ್ಲ — ಕೇವಲ ಸಹಾಯ.',
+    'verdict.listen': 'ಕೇಳಿ',
+    'verdict.stop': 'ನಿಲ್ಲಿಸಿ',
 
     'mh.title': 'ದಯವಿಟ್ಟು ಸಹಾಯ ಪಡೆಯಿರಿ — ನೀವು ಒಬ್ಬಂಟಿಗಲ್ಲ.',
     'mh.body':

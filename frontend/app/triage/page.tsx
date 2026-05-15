@@ -288,7 +288,7 @@ function TriagePageInner() {
             <ChatWindow messages={messages} loading={loading} />
             {verdict && (
               <div ref={verdictRef} className="mt-6">
-                <VerdictCard verdict={verdict} />
+                <VerdictCard verdict={verdict} autoSpeak />
               </div>
             )}
           </div>

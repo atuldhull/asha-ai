@@ -360,7 +360,7 @@ function BodyMap3DPageInner() {
         {verdict && (
           <div className="border-t border-slate-800 bg-[#0a0e1a] px-4 py-6">
             <div className="mx-auto max-w-2xl">
-              <VerdictCard verdict={verdict} />
+              <VerdictCard verdict={verdict} autoSpeak />
               <div className="mt-4 flex justify-center gap-3">
                 <button
                   type="button"
