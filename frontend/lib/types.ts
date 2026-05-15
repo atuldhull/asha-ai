@@ -104,6 +104,24 @@ export interface Differential {
   cant_miss?: DifferentialItem[];
 }
 
+/**
+ * Pre-fed condition knowledge attached to a verdict — likely condition with
+ * hallmark symptoms, self-care/treatment and an escalation watch-list.
+ * Informational decision-support; the matched condition NEVER changes `level`.
+ */
+export interface ConditionGuidance {
+  id: string;
+  name: string;
+  aka?: string;
+  summary: string;
+  symptoms: string[];
+  self_care: string[];
+  watch_for: string[];
+  otc?: string[];
+  /** Informational only — not used to set the verdict. */
+  typicalCare: CareLevel;
+}
+
 export interface TriageResponse {
   /* Required, since Plan 1.0 */
   level: CareLevel;
@@ -126,6 +144,8 @@ export interface TriageResponse {
   risk?: RiskAssessment;
   /** Plan 5.1 — true when risk caused an escalation from a lower care level. */
   risk_escalated?: boolean;
+  /** Plan 7.x — pre-fed condition KB: likely condition + self-care + watch-list. */
+  condition?: ConditionGuidance;
 }
 
 /* ──────────────── Plan 5.1 — Risk Scoring ──────────────── */

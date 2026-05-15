@@ -2,7 +2,18 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Home, Stethoscope, Siren, BookOpen, ChevronDown, Sparkles } from 'lucide-react';
+import {
+  Home,
+  Stethoscope,
+  Siren,
+  BookOpen,
+  ChevronDown,
+  Sparkles,
+  Pill,
+  ListChecks,
+  AlertTriangle,
+  Activity,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { CareLevel, TriageResponse } from '@/lib/types';
 import { cn } from '@/lib/cn';
@@ -208,6 +219,84 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
                 via WhatsApp / native share. No API keys needed. */}
             <VerdictActions verdict={verdict} />
           </div>
+
+          {verdict.condition && (
+            <div className="mt-4 rounded-lg border border-slate-200/60 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/40 p-4">
+              <div className="flex items-start gap-2">
+                <Activity className="mt-0.5 h-4 w-4 flex-shrink-0 text-care-clinic" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Likely condition &amp; care
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-800 dark:text-slate-100">
+                    {verdict.condition.name}
+                    {verdict.condition.aka && (
+                      <span className="ml-1.5 text-xs font-normal italic text-slate-500 dark:text-slate-400">
+                        ({verdict.condition.aka})
+                      </span>
+                    )}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {verdict.condition.summary}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <Stethoscope className="h-3.5 w-3.5" aria-hidden />
+                    Typical symptoms
+                  </p>
+                  <ul className="mt-1.5 ml-4 list-disc space-y-1 text-xs text-slate-600 dark:text-slate-300">
+                    {verdict.condition.symptoms.map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                    <ListChecks className="h-3.5 w-3.5" aria-hidden />
+                    What to do
+                  </p>
+                  <ul className="mt-1.5 ml-4 list-disc space-y-1 text-xs text-slate-700 dark:text-slate-200">
+                    {verdict.condition.self_care.map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {verdict.condition.otc && verdict.condition.otc.length > 0 && (
+                <div className="mt-3 flex items-start gap-1.5 rounded-md bg-slate-100/70 dark:bg-slate-800/40 px-3 py-2">
+                  <Pill className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-slate-500 dark:text-slate-400" aria-hidden />
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    <span className="font-semibold">Symptom relief:</span>{' '}
+                    {verdict.condition.otc.join(' · ')}
+                    <span className="block text-[11px] italic text-slate-500 dark:text-slate-400">
+                      Confirm any medicine with a doctor or pharmacist — dosing depends on age, weight and pregnancy.
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                  Get care urgently if
+                </p>
+                <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">
+                  {verdict.condition.watch_for.join(' · ')}
+                </p>
+              </div>
+
+              <p className="mt-3 text-[11px] italic text-slate-500 dark:text-slate-500 leading-snug">
+                This is a likely match based on your description — not a confirmed diagnosis. A
+                registered practitioner makes the final call.
+              </p>
+            </div>
+          )}
 
           {verdict.red_flags && verdict.red_flags.length > 0 && (
             <details className="mt-4">

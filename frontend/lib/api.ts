@@ -6,8 +6,21 @@ import {
   type VoiceTranscribeResponse,
   DISCLAIMER,
 } from './types';
+import { identifyCondition } from './conditions';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+
+/**
+ * Attach pre-fed condition guidance (symptoms + self-care + watch-list) to a
+ * verdict when the response doesn't already carry one. The matched condition
+ * is informational only — it never changes `res.level`, which stays decided
+ * by the authoritative deterministic engine (mock) or backend.
+ */
+function withCondition(req: TriageRequest, res: TriageResponse): TriageResponse {
+  if (res.condition) return res;
+  const condition = identifyCondition(req.symptoms, res.level);
+  return condition ? { ...res, condition } : res;
+}
 
 /**
  * Calls the backend triage endpoint, OR returns a deterministic mock if
@@ -16,7 +29,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
  */
 export async function postTriage(req: TriageRequest): Promise<TriageResponse> {
   if (!API_BASE) {
-    return mockTriage(req);
+    return withCondition(req, await mockTriage(req));
   }
 
   // Hard timeout. A backend that's unreachable, cold-starting (Render free
