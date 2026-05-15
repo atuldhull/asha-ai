@@ -35,6 +35,16 @@ _DEFAULT_BASE = "https://meity-auth.ulcacontrib.org"  # Bhashini ULCA front door
 _TIMEOUT_S = 20.0
 _SUPPORTED_LANGUAGES = {"en", "hi", "kn", "ta", "te"}
 
+# Plan 4.0 — explicit per-language pipeline config. The voice IDs default
+# to "female_<lang>" on the Bhashini PoC tier when not overridden; we
+# keep the dict so future tier changes (paid Bhashini, AI4Bharat fallback)
+# only touch one place.
+LANGUAGE_PIPELINES: dict[str, dict[str, str]] = {
+    "en": {"src": "en", "intermediate": "en", "voice": "female_en"},
+    "hi": {"src": "hi", "intermediate": "en", "voice": "female_hi"},
+    "kn": {"src": "kn", "intermediate": "en", "voice": "female_kn"},
+}
+
 
 def _config() -> tuple[str, str]:
     api_key = os.getenv("BHASHINI_API_KEY", "").strip()
@@ -191,3 +201,33 @@ async def synthesize(text: str, lang: str = "hi") -> bytes:
 
 def is_configured() -> bool:
     return bool(os.getenv("BHASHINI_API_KEY", "").strip())
+
+
+# ── Plan 4.0 Kannada smoke test ─────────────────────────────────────
+# Run from repo root once the BHASHINI_API_KEY is set:
+#   python -m backend.app.nlp.bhashini
+# Verifies the kn pipeline round-trips before native-speaker QA.
+async def _smoke_kannada() -> None:
+    sample_kn_text = "ನನಗೆ ಎದೆಯಲ್ಲಿ ತುಂಬಾ ನೋವು ಮತ್ತು ಬೆವರು ಬರುತ್ತಿದೆ"
+    # ("I have severe chest pain and I'm sweating" — Kannada)
+    print(f"=== Bhashini Kannada smoke ===")
+    print(f"configured: {is_configured()}")
+    if not is_configured():
+        print("Set BHASHINI_API_KEY first (see https://bhashini.gov.in/ulca).")
+        return
+    try:
+        print(f"\n[tts]  synthesizing Kannada audio for: {sample_kn_text!r}")
+        audio = await synthesize(sample_kn_text, lang="kn")
+        print(f"[tts]  ok -- {len(audio)} bytes returned")
+        # write to disk so the user can play it back
+        from pathlib import Path
+        out = Path("bhashini_kn_smoke.wav")
+        out.write_bytes(audio)
+        print(f"[tts]  wrote {out.resolve()} -- play it to verify pronunciation")
+    except BhashiniUnavailable as exc:
+        print(f"[tts]  failed: {exc}")
+
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(_smoke_kannada())

@@ -193,7 +193,12 @@ def run_pipeline(
             ml_label, ml_confidence, debug = prediction
             ml_version = debug.get("version")
 
-    severity_score, _matched = compute_severity(symptoms_text)
+    # Run severity against the raw text PLUS the canonical-token form of
+    # extracted symptoms. This lets paraphrased presentations (e.g.
+    # "tightness in my jaw" → radiation_jaw) score through the CSV
+    # substring matcher, which only sees `radiation jaw` strings.
+    _enriched_text = symptoms_text + " " + " ".join(t.replace("_", " ") for t in sym_tokens)
+    severity_score, _matched = compute_severity(_enriched_text)
     esi = esi_from_severity(severity_score, vitals_dict, age)
     esi_level = level_from_esi(esi)
 

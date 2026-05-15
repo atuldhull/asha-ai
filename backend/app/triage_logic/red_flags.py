@@ -54,34 +54,56 @@ def _hist(history: set[str], *tokens: str) -> bool:
 
 
 # ───────────────────────── Rule 1 — STEMI / ACS ─────────────────────────
+_ACS_CO_SYMPTOMS = (
+    "radiation_arm", "radiation_jaw", "diaphoresis",
+    "shortness_of_breath", "nausea",
+)
+
+
 def rule_1_stemi(
     symptoms: set[str], age: int | None, sex: str | None,
     history: set[str], vitals: dict,
 ) -> Flag | None:
-    if not _has(symptoms, "chest_pain"):
-        return None
-
-    co_symptoms = _any(
-        symptoms,
-        "radiation_arm", "radiation_jaw", "diaphoresis",
-        "shortness_of_breath", "nausea",
-    )
-    age_risk = (age is not None and age >= 35) and co_symptoms
+    has_chest_pain = _has(symptoms, "chest_pain")
+    co_symptoms = _any(symptoms, *_ACS_CO_SYMPTOMS)
     history_risk = _hist(history, "diabetes", "hypertension", "smoker")
 
-    if age_risk or history_risk or co_symptoms:
-        return Flag(
-            rule_id="R1_STEMI",
-            rule_name="STEMI / Acute Coronary Syndrome",
-            force_level="Emergency Room",
-            reasoning=(
-                "Chest pain with cardiac red-flag features (arm/jaw "
-                "radiation, sweating, shortness of breath, or risk "
-                "history) can be a heart attack. Time is muscle — go to "
-                "an emergency room now."
-            ),
-            citation="RED_FLAGS.md Rule 1",
-        )
+    if has_chest_pain:
+        age_risk = (age is not None and age >= 35) and co_symptoms
+        if age_risk or history_risk or co_symptoms:
+            return Flag(
+                rule_id="R1_STEMI",
+                rule_name="STEMI / Acute Coronary Syndrome",
+                force_level="Emergency Room",
+                reasoning=(
+                    "Chest pain with cardiac red-flag features (arm/jaw "
+                    "radiation, sweating, shortness of breath, or risk "
+                    "history) can be a heart attack. Time is muscle — go to "
+                    "an emergency room now."
+                ),
+                citation="RED_FLAGS.md Rule 1",
+            )
+
+    # Atypical ACS — common in women, diabetics, elderly. No literal chest
+    # pain, but 2+ classic cardiac co-symptoms AND either age >= 50 or a
+    # cardiac risk history. Catches the Babylon-style miss the eval was
+    # designed to surface (jaw/back tightness + diaphoresis + nausea).
+    if not has_chest_pain:
+        co_count = sum(1 for s in _ACS_CO_SYMPTOMS if s in symptoms)
+        atypical_age_risk = age is not None and age >= 50
+        if co_count >= 2 and (atypical_age_risk or history_risk):
+            return Flag(
+                rule_id="R1_STEMI",
+                rule_name="STEMI / ACS (atypical presentation)",
+                force_level="Emergency Room",
+                reasoning=(
+                    "Multiple cardiac red-flag features (jaw/back/arm "
+                    "discomfort, sweating, nausea, or breathlessness) in a "
+                    "higher-risk patient — possible atypical heart attack. "
+                    "Go to an emergency room now."
+                ),
+                citation="RED_FLAGS.md Rule 1 (atypical)",
+            )
     return None
 
 

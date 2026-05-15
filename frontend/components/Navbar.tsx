@@ -9,6 +9,7 @@ import { useUser, signOut } from '@/lib/auth';
 import { useTranslation } from '@/lib/i18n/I18nProvider';
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { MuteToggle } from './MuteToggle';
 
 export function Navbar() {
   const router = useRouter();
@@ -50,6 +51,7 @@ export function Navbar() {
           )}
 
           <LanguageSwitcher />
+          <MuteToggle />
           <ThemeToggle />
 
           {!loading && user ? (

@@ -99,6 +99,11 @@ def parse_history(value: str | list[str] | None) -> set[str]:
                 out.add(token)
                 break
         else:
+            # Catch-all allergy patterns ("bee allergy", "known bee allergy",
+            # "nut allergy", "allergic to penicillin", "wasp sting allergy"
+            # etc.) → known_allergy so R3 anaphylaxis can fire.
+            if "allergy" in part or "allergic" in part:
+                out.add("known_allergy")
             # Unknown but kept — useful for downstream extension
             if snake:
                 out.add(snake)

@@ -10,13 +10,14 @@
  * and avoids ambiguity when a doctor reads the audit log.
  */
 
-export const SUPPORTED_LOCALES = ['en', 'hi'] as const;
+export const SUPPORTED_LOCALES = ['en', 'hi', 'kn'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'en';
 
 export const LOCALE_LABELS: Record<Locale, string> = {
   en: 'English',
   hi: 'हिंदी',
+  kn: 'ಕನ್ನಡ',
 };
 
 type Dict = Record<string, string>;
@@ -205,5 +206,93 @@ export const DICTIONARIES: Record<Locale, Dict> = {
     'common.back': 'वापस',
     'common.loading': 'लोड हो रहा है…',
     'common.notReplacement': 'पेशेवर चिकित्सा निदान का विकल्प नहीं।',
+  },
+
+  /* Draft Kannada — review with native speaker before final submission.
+   * Care-level strings stay ENGLISH per the API-contract rule. */
+  kn: {
+    'nav.signIn': 'ಸೈನ್ ಇನ್',
+    'nav.signOut': 'ಸೈನ್ ಔಟ್',
+    'nav.triage': 'ಟ್ರಿಯಾಜ್',
+    'nav.history': 'ಇತಿಹಾಸ',
+    'nav.cockpit': 'ಕಾಕ್‌ಪಿಟ್',
+
+    'landing.heroBadge': 'ಸಹಾಯ ಮಾತ್ರ · ನಿಧಾನ ಅಲ್ಲ',
+    'landing.h1': 'ವೈದ್ಯರು ಇಲ್ಲದ ಕಡೆ ಟ್ರಿಯಾಜ್ ಬೆಂಬಲ.',
+    'landing.sub':
+      'ನಿಮ್ಮ ಭಾಷೆಯಲ್ಲಿ AI-ಆಧಾರಿತ ಪ್ರಾಥಮಿಕ ಟ್ರಿಯಾಜ್. ಭಾರತದ ಗ್ರಾಮೀಣ ಕೊನೆಯ ಮೈಲಿಗಾಗಿ ನಿರ್ಮಿಸಲಾಗಿದೆ.',
+    'landing.ctaStart': 'ಟ್ರಿಯಾಜ್ ಪ್ರಾರಂಭಿಸಿ',
+    'landing.ctaHow': 'ಇದು ಹೇಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ',
+    'landing.howTitle': 'ಇದು ಹೇಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ',
+    'landing.step1Title': 'ನಿಮ್ಮ ಲಕ್ಷಣಗಳನ್ನು ವಿವರಿಸಿ',
+    'landing.step1Body': 'ಹಿಂದಿ, ಕನ್ನಡ ಅಥವಾ ಇಂಗ್ಲಿಷ್‌ನಲ್ಲಿ — ಟೈಪ್ ಮಾಡಿ ಅಥವಾ ಮಾತನಾಡಿ.',
+    'landing.step2Title': 'ಟ್ರಿಯಾಜ್ ಸಲಹೆ ಪಡೆಯಿರಿ',
+    'landing.step2Body':
+      'Home Care · Clinic Visit · Emergency Room — ESI v5 ಪ್ರೋಟೋಕಾಲ್ ಪ್ರಕಾರ.',
+    'landing.step3Title': 'ಕಾರಣವನ್ನು ನೋಡಿ',
+    'landing.step3Body': 'ಪ್ರತಿಯೊಂದು ಸಲಹೆಯು ಯಾವ ಲಕ್ಷಣಗಳಿಂದ ತೀರ್ಮಾನ ಬಂದಿತು ಎಂದು ತೋರಿಸುತ್ತದೆ.',
+    'landing.disclaimer':
+      'ASHA-AI ಸಹಾಯ, ವೈದ್ಯಕೀಯ ಸಾಧನ ಅಲ್ಲ. ಭಾರತದ ಟೆಲಿಮೆಡಿಸಿನ್ ಪ್ರಾಕ್ಟೀಸ್ ಮಾರ್ಗಸೂಚಿಗಳ ಪ್ರಕಾರ AI ಕೇವಲ ನೋಂದಾಯಿತ ವೈದ್ಯರಿಗೆ ಸಹಾಯ ಮಾಡುತ್ತದೆ — ಪ್ರಿಸ್ಕ್ರಿಪ್ಷನ್ ಅಥವಾ ರೋಗನಿರ್ಣಯ ಮಾಡುವುದಿಲ್ಲ.',
+
+    'triage.greeting':
+      'ನಮಸ್ಕಾರ. ನಾನು ASHA-AI. ನಿಮಗೇನು ಆಗುತ್ತಿದೆ ಎಂದು ತಿಳಿಸಿ — ಯಾವ ಲಕ್ಷಣಗಳು, ಯಾವಾಗಿನಿಂದ, ಮತ್ತು ಏನು ಗಮನಿಸಿದಿರಿ. ಮುಂದೆ ಎಲ್ಲಿ ಹೋಗಬೇಕು ಎಂಬುದನ್ನು ನಿರ್ಧರಿಸಲು ನಾನು ಸಹಾಯ ಮಾಡುತ್ತೇನೆ.',
+    'triage.placeholder': 'ನಿಮ್ಮ ಲಕ್ಷಣಗಳನ್ನು ವಿವರಿಸಿ — ಯಾವಾಗಿನಿಂದ, ಎಷ್ಟು ತೀವ್ರ…',
+    'triage.send': 'ಕಳುಹಿಸಿ',
+    'triage.sending': 'ಕಳುಹಿಸುತ್ತಿದೆ',
+    'triage.holdToTalk': 'ಮಾತನಾಡಲು ಒತ್ತಿ ಹಿಡಿಯಿರಿ',
+    'triage.startVoice': 'ಧ್ವನಿ ಪ್ರಾರಂಭಿಸಿ',
+    'triage.stopVoice': 'ರೆಕಾರ್ಡಿಂಗ್ ನಿಲ್ಲಿಸಿ',
+    'triage.voiceUnavailable': 'ಈ ಸಾಧನದಲ್ಲಿ ಧ್ವನಿ ಲಭ್ಯವಿಲ್ಲ',
+    'triage.signInBanner': 'ನೀವು ಸೈನ್ ಇನ್ ಮಾಡಿಲ್ಲ — ಈ ಟ್ರಿಯಾಜ್ ಇತಿಹಾಸದಲ್ಲಿ ಉಳಿಯುವುದಿಲ್ಲ.',
+    'triage.signInLink': 'ಸೈನ್ ಇನ್',
+    'triage.signInBannerSuffix': 'ಮಾಡಿ ರೆಕಾರ್ಡ್ ಇರಲು.',
+
+    'verdict.homeCare.subtitle': 'ಮನೆಯಲ್ಲಿ ಆರೈಕೆ',
+    'verdict.clinicVisit.subtitle': 'ಕ್ಲಿನಿಕ್‌ಗೆ ಭೇಟಿ',
+    'verdict.emergencyRoom.subtitle': 'ತಕ್ಷಣ ಆಸ್ಪತ್ರೆಗೆ',
+    'verdict.sources': 'ಮೂಲಗಳು',
+    'verdict.notDiagnosis': 'ರೋಗನಿರ್ಣಯ ಅಲ್ಲ — ಕೇವಲ ಸಹಾಯ.',
+
+    'mh.title': 'ದಯವಿಟ್ಟು ಸಹಾಯ ಪಡೆಯಿರಿ — ನೀವು ಒಬ್ಬಂಟಿಗಲ್ಲ.',
+    'mh.body':
+      'ನೀವು ನಿಮ್ಮ ಜೀವನವನ್ನು ಕೊನೆಗೊಳಿಸುವ ಅಥವಾ ನಿಮಗೆ ಹಾನಿ ಮಾಡಿಕೊಳ್ಳುವ ಬಗ್ಗೆ ಯೋಚಿಸುತ್ತಿದ್ದರೆ, ದಯವಿಟ್ಟು ಈಗಲೇ ಈ ಉಚಿತ, ಗೋಪ್ಯ ಸಹಾಯವಾಣಿಗಳಿಗೆ ಕರೆ ಮಾಡಿ.',
+    'mh.icall': 'iCall (ಇಂಗ್ಲಿಷ್ / ಹಿಂದಿ / ಕನ್ನಡ)',
+    'mh.vandrevala': 'ವಂದ್ರೆವಾಲಾ ಫೌಂಡೇಶನ್ (24×7)',
+    'mh.emergency': 'ಇದು ತಕ್ಷಣ ತುರ್ತು ಪರಿಸ್ಥಿತಿಯಾಗಿದ್ದರೆ, 108 (ಆಂಬ್ಯುಲೆನ್ಸ್) ಅಥವಾ 112 ಗೆ ಕರೆ ಮಾಡಿ.',
+    'mh.safeBack': 'ನಾನು ಸುರಕ್ಷಿತ — ಹಿಂದೆ ಕರೆದೊಯ್ಯಿರಿ',
+
+    'signin.title': 'ಸೈನ್ ಇನ್',
+    'signin.sub': 'ಫೋನ್ OTP. ಯಾವುದೇ ಇಮೇಲ್ ಅಥವಾ ಸಾಮಾಜಿಕ ಲಾಗಿನ್ ಇಲ್ಲ.',
+    'signin.demoMode': 'ಡೆಮೋ ಮೋಡ್: ಯಾವುದೇ ಫೋನ್ ಕೆಲಸ ಮಾಡುತ್ತದೆ. OTP',
+    'signin.phoneLabel': 'ಫೋನ್ ಸಂಖ್ಯೆ',
+    'signin.phonePlaceholder': '+91XXXXXXXXXX',
+    'signin.sendOtp': 'OTP ಕಳುಹಿಸಿ',
+    'signin.sendingOtp': 'OTP ಕಳುಹಿಸುತ್ತಿದೆ…',
+    'signin.otpLabel': 'ಒಂದು ಬಾರಿಯ ಪಾಸ್‌ವರ್ಡ್',
+    'signin.otpSent': 'ನಾವು 6-ಅಂಕಿಯ ಕೋಡ್ ಕಳುಹಿಸಿದ್ದೇವೆ',
+    'signin.verify': 'ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಸೈನ್ ಇನ್ ಮಾಡಿ',
+    'signin.verifying': 'ಪರಿಶೀಲಿಸುತ್ತಿದೆ…',
+    'signin.changePhone': 'ಫೋನ್ ಸಂಖ್ಯೆಯನ್ನು ಬದಲಾಯಿಸಿ',
+    'signin.dpdp':
+      'ಸಹಾಯ ಮಾತ್ರ — ರೋಗನಿರ್ಣಯ ಅಲ್ಲ. ಫೋನ್ ಸಂಖ್ಯೆಯನ್ನು ಸೆಷನ್ ನಿರಂತರತೆಗಾಗಿ ಬಳಸಲಾಗಿದೆ. DPDP ಕಾಯಿದೆ 2023 ಪ್ರಕಾರ.',
+
+    'history.title': 'ನಿಮ್ಮ ಟ್ರಿಯಾಜ್ ಇತಿಹಾಸ',
+    'history.sub': 'ASHA-AI ನಲ್ಲಿ ನೀವು ನಡೆಸಿದ ಸೆಷನ್‌ಗಳು. ಈ ಸಾಧನದಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ.',
+    'history.empty': 'ಇನ್ನೂ ಸೆಷನ್‌ಗಳಿಲ್ಲ',
+    'history.emptyBody': 'ನಿಮ್ಮ ಮೊದಲ ಟ್ರಿಯಾಜ್ ಪ್ರಾರಂಭಿಸಿ ಇಲ್ಲಿ ಕಾಣಲು.',
+    'history.startCta': 'ಟ್ರಿಯಾಜ್ ಪ್ರಾರಂಭಿಸಿ',
+
+    'doctor.title': 'ವೈದ್ಯ ಕಾಕ್‌ಪಿಟ್',
+    'doctor.empty': 'ಯಾವುದೇ ಸಕ್ರಿಯ ಪ್ರಕರಣಗಳಿಲ್ಲ',
+    'doctor.emptyBody': 'ರೋಗಿಗಳ ಟ್ರಿಯಾಜ್ ಇಲ್ಲಿ ನೈಜ ಸಮಯದಲ್ಲಿ ಕಾಣಿಸಿಕೊಳ್ಳುತ್ತದೆ.',
+    'doctor.markReviewed': 'ಪರಿಶೀಲಿಸಿದ ಎಂದು ಗುರುತಿಸಿ',
+    'doctor.reviewed': 'ಪರಿಶೀಲಿಸಲಾಗಿದೆ',
+    'doctor.refresh': 'ರಿಫ್ರೆಶ್',
+    'doctor.showReviewed': 'ಪರಿಶೀಲಿಸಿದನ್ನು ತೋರಿಸಿ',
+    'doctor.selectCase': 'ಕ್ಯೂನಿಂದ ಒಂದು ಪ್ರಕರಣ ಆಯ್ಕೆಮಾಡಿ',
+
+    'common.back': 'ಹಿಂದೆ',
+    'common.loading': 'ಲೋಡ್ ಆಗುತ್ತಿದೆ…',
+    'common.notReplacement': 'ವೃತ್ತಿಪರ ವೈದ್ಯಕೀಯ ರೋಗನಿರ್ಣಯಕ್ಕೆ ಬದಲಿ ಅಲ್ಲ.',
   },
 };

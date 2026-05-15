@@ -13,6 +13,11 @@
   html[lang="hi"] body {
     font-family: var(--font-devanagari), var(--font-inter), -apple-system, "Segoe UI", system-ui, sans-serif;
   }
+  /* Kannada — system font stack handles the script natively on most modern OSes;
+     Noto Sans Kannada would need an extra Google Font fetch. Defer until QA. */
+  html[lang="kn"] body {
+    font-family: var(--font-inter), "Noto Sans Kannada", "Tunga", -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
 }
 
 /* Smooth scrollbar (light + dark) */
@@ -23,11 +28,49 @@
 .dark ::-webkit-scrollbar-thumb { background: rgb(51 65 85); }
 .dark ::-webkit-scrollbar-thumb:hover { background: rgb(71 85 105); }
 
+/* Plan 4.0 micro-interactions — subtle but felt across the whole app */
+@layer components {
+  /* Buttons feel responsive to press */
+  button:not(:disabled):active,
+  a[role="button"]:active {
+    transform: scale(0.97);
+    transition: transform 80ms ease-out;
+  }
+  /* Visible focus ring on every interactive element */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  /* Skeleton shimmer for animate-pulse blocks */
+  .skeleton-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      rgba(148, 163, 184, 0.0) 0%,
+      rgba(148, 163, 184, 0.12) 50%,
+      rgba(148, 163, 184, 0.0) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+}
+
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  button:active, a[role="button"]:active {
+    transform: none !important;
   }
 }

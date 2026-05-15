@@ -1,19 +1,19 @@
 {
-  "overall_accuracy": 0.8163265306122449,
-  "macro_f1": 0.8165784832451499,
+  "overall_accuracy": 0.8076923076923077,
+  "macro_f1": 0.8087998712998713,
   "emergency_recall": 1.0,
   "emergency_miss_count": 0,
-  "n_triage_cases": 49,
+  "n_triage_cases": 52,
   "per_class": {
     "Home Care": {
-      "precision": 0.8461538461538461,
-      "recall": 0.7857142857142857,
-      "f1": 0.8148148148148148
+      "precision": 0.8666666666666667,
+      "recall": 0.7647058823529411,
+      "f1": 0.8125
     },
     "Clinic Visit": {
-      "precision": 0.875,
+      "precision": 0.8235294117647058,
       "recall": 0.7,
-      "f1": 0.7777777777777778
+      "f1": 0.7567567567567568
     },
     "Emergency Room": {
       "precision": 0.75,
@@ -29,8 +29,8 @@
     ],
     "matrix": [
       [
-        11,
-        2,
+        13,
+        3,
         1
       ],
       [
@@ -831,6 +831,51 @@
         "Emergency Room": 0.007085809484124184
       },
       "symptoms_text": "sore legs and shoulders today after first gym session yesterday no fever no injury"
+    },
+    {
+      "case_id": 51,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adversarial_safeguard",
+      "fired_flags": [],
+      "esi": 4,
+      "probs": {
+        "Home Care": 0.7095895409584045,
+        "Clinic Visit": 0.28311580419540405,
+        "Emergency Room": 0.007294617593288422
+      },
+      "symptoms_text": "my arm is sore from yesterday's gym workout, no other problems"
+    },
+    {
+      "case_id": 52,
+      "expected": "Home Care",
+      "predicted": "Home Care",
+      "match": true,
+      "category": "adversarial_safeguard",
+      "fired_flags": [],
+      "esi": 4,
+      "probs": {
+        "Home Care": 0.5405896306037903,
+        "Clinic Visit": 0.4480852782726288,
+        "Emergency Room": 0.011325067840516567
+      },
+      "symptoms_text": "I have a heavy backpack and my shoulder hurts after a long walk"
+    },
+    {
+      "case_id": 53,
+      "expected": "Home Care",
+      "predicted": "Clinic Visit",
+      "match": false,
+      "category": "adversarial_safeguard",
+      "fired_flags": [],
+      "esi": 3,
+      "probs": {
+        "Home Care": 0.34718358516693115,
+        "Clinic Visit": 0.5746391415596008,
+        "Emergency Room": 0.07817728817462921
+      },
+      "symptoms_text": "I'm a bit confused about my insurance paperwork, no medical symptoms"
     }
   ]
 }

@@ -209,6 +209,11 @@ class OllamaProvider:
         parsed["provider"] = self.name
         out = ExtractedSymptoms.from_dict(parsed)
         out.provider = self.name
+        # Plan 4.0 — deterministic adversarial post-processor.
+        # Catches the vague-stroke pattern and forces the FAST follow-up
+        # even if Gemma's JSON output skipped it. Safety > LLM judgment.
+        from app.llm.post_process import post_process
+        out, _trace = post_process(out, text)
         return out
 
     async def followup_question(

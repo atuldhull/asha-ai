@@ -228,7 +228,7 @@ Plan 3.0 unlocks **Innovation 25%** with two features no other team will have: *
             │   │ LAYER 1 — LLMProvider (env-var swap)        │ │
             │   │ ┌─────────────┐  ┌──────────────────────┐   │ │
             │   │ │ GeminiProv  │  │ OllamaProvider       │   │ │
-            │   │ │ 2.0 Flash   │  │ gemma2:9b (laptop)   │   │ │
+            │   │ │ 2.5 Flash   │  │ gemma2:9b (laptop)   │   │ │
             │   │ │ (cloud)     │  │ gemma2:2b (RPi 5)    │   │ │
             │   │ └──────┬──────┘  └────────┬─────────────┘   │ │
             │   │        └──────same schema──┘                 │ │
@@ -281,7 +281,7 @@ Plan 3.0 unlocks **Innovation 25%** with two features no other team will have: *
             │  Connection-status indicator — the unplug signal  │
             │                                                   │
             │  Nav badge polls GET /api/v1/edge-status every 5s │
-            │   provider="cloud"  → 🌐 Cloud   (Gemini 2.0 Flash)│
+            │   provider="cloud"  → 🌐 Cloud   (Gemini 2.5 Flash)│
             │   provider="edge"   → 📡 Edge    (Ollama + Gemma)  │
             │   unreachable       → ⚠  Offline                  │
             │                                                   │
@@ -332,6 +332,104 @@ Plan 3.0 unlocks **Innovation 25%** with two features no other team will have: *
 - First real-patient triage (Plan 4.0)
 - Open-source HuggingFace benchmark publish (Plan 4.0)
 - k6 load test screenshot (Plan 4.0)
+
+---
+
+## 0.9 Plan 4.0 architecture — agentic 5-tool refactor (submission state)
+
+Plan 4.0 finalizes the architecture for submission with three structural changes vs Plan 3.0:
+
+1. **Layer 1 becomes agentic.** Gemini is refactored from a JSON-extraction call to **Gemini function-calling with 5 tools** ([AGENTIC_TOOLS.md](AGENTIC_TOOLS.md)). The LLM orchestrates; every clinical decision flows through a deterministic tool.
+2. **Kannada activates.** The Bhashini pipeline now handles `kn` source/target alongside `hi`. Native-speaker QA documented in `docs/kn_qa_notes.md`.
+3. **Refusal screens become first-class.** Drug-dosing requests and suicidal ideation route through `app/core/safety.py` to dedicated `RefusalScreen.tsx` views, distinct from the verdict card.
+
+```
+                  Patient — voice or text · EN · HI · KN
+                                  │
+                                  ▼  (Bhashini ASR + NMT for voice; direct for text)
+            ┌──────────────────────────────────────────────────┐
+            │   Gemini 2.5 Flash · function-calling orchestrator │
+            │                                                   │
+            │   tools = [extract_symptoms, get_red_flags,        │
+            │            compute_esi, imci_lookup, rag_retrieve] │
+            │                                                   │
+            │   while gemini_wants_to_call_tool:                 │
+            │     1. parse function_call from Gemini             │
+            │     2. execute tool locally (Python)               │
+            │     3. log invocation to audit_log                 │
+            │     4. send function_response back to Gemini        │
+            │     5. max-iterations cap = 8 (safety)             │
+            │                                                   │
+            │   ┌──────────────┐   ┌────────────────┐           │
+            │   │ extract_     │ ─►│ get_red_flags  │           │
+            │   │ symptoms     │   │ R1–R9 pure fns │           │
+            │   │ (LLMProvider)│   └────────┬───────┘           │
+            │   └──────────────┘            │                   │
+            │           │                   ▼                   │
+            │           │           ┌────────────────┐           │
+            │           │           │ compute_esi    │           │
+            │           │           │ severity → ESI │           │
+            │           │           │ 1–5 → care lvl │           │
+            │           │           └────────┬───────┘           │
+            │           ▼                    ▼                   │
+            │   ┌──────────────┐   ┌────────────────┐           │
+            │   │ imci_lookup  │   │ rag_retrieve   │           │
+            │   │ (under-5     │   │ top-3 snippets │           │
+            │   │  routing)    │   │ from pgvector  │           │
+            │   └──────┬───────┘   └────────┬───────┘           │
+            │          │                    │                   │
+            │          └────────┬───────────┘                   │
+            │                   ▼                               │
+            │   final = max(rule_layer.force_level,             │
+            │               esi_layer.care_level,                │
+            │               imci_layer.recommendation)           │
+            │   ── SAFETY PROPERTY · UNIT-TESTED ──              │
+            └────────────────┬─────────────────────────────────┘
+                             │
+                             ▼
+              ┌──────────────────────────────────────┐
+              │   /api/v1/triage response             │
+              │   { verdict_id, level, esi, …,        │
+              │     tool_invocations: [...]  ← logged │
+              │     citations: [...],                 │
+              │     refusal: bool, refusal_type: ... }│
+              └──────────────────────────────────────┘
+                             │
+              ┌──────────────┼────────────────────────────┐
+              ▼              ▼                            ▼
+      VerdictCard       RefusalScreen                  Doctor cockpit
+      (sound +          ┌─────────────┐                Realtime · 3-tier
+       haptic +         │ drug-dosing │                differential
+       Sources)         │ → consult   │
+                        │   RMP        │
+                        └─────────────┘
+                        ┌─────────────┐
+                        │ suicidal    │
+                        │ → iCall +   │
+                        │  Vandrevala │
+                        └─────────────┘
+```
+
+**What Plan 4.0 adds beyond Plan 3.0 (operational, not just architectural):**
+
+- **k6 load test**: 200 RPS sustained, p95 latency screenshot in [PITCH_DECK_PLAN_4.0.md slide 6](PITCH_DECK_PLAN_4.0.md)
+- **HuggingFace public benchmark**: `huggingface.co/datasets/<org>/asha-ai-50-triage-eval` (CC-BY-4.0)
+- **MBBS clinical validation**: 50-case eval reviewed by Dr. [Name], MBBS (see [MBBS_TRACKER.md Plan 4.0 review session protocol](MBBS_TRACKER.md))
+- **First real-patient triage**: signed consent per [CONSENT_FORM.md](CONSENT_FORM.md); log row in [checklists/REAL_PATIENT.md](checklists/REAL_PATIENT.md)
+- **Sound design**: per-care-level chimes (`/audio/chime-home.mp3`, `chime-clinic.mp3`, `urgent-er.mp3`) + ER cockpit ping
+- **Mobile haptic feedback** via Vibration API (Android)
+- **OG image · favicon · maskable PWA icons**
+- **Final Lighthouse Mobile: Perf ≥ 85 · A11y ≥ 95 · Best Practices ≥ 90 · SEO ≥ 90** on every route
+
+**What does NOT change vs Plan 3.0:**
+
+- Care-level strings are exact (`Home Care` / `Clinic Visit` / `Emergency Room`)
+- Safety property still `final = max(rule, esi, imci)` — rules can only escalate
+- Disclaimer on every screen and in every video frame
+- DPDP / Mumbai region / 7-day audio TTL / audit log
+- Edge-mode `LLMProvider` toggle still works (the agentic refactor preserves the protocol; on edge, Ollama replaces Gemini and the tool-call loop happens via Python orchestration over Ollama's JSON-mode output)
+
+The submitted system is this diagram. The Plan 1.0 keyword-rule engine, the Plan 2.0 XGBoost classifier, and the Plan 3.0 RAG + Realtime layers are all still present — Plan 4.0 only wraps an agentic orchestrator around them and ships the four credibility moats above.
 
 ---
 

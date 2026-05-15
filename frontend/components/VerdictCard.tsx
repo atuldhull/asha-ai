@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Home, Stethoscope, Siren, BookOpen, ChevronDown } from 'lucide-react';
 import { CareLevel, TriageResponse } from '@/lib/types';
 import { cn } from '@/lib/cn';
 import { useTranslation } from '@/lib/i18n/I18nProvider';
+import { playVerdictCue } from '@/lib/audio';
 
 interface VerdictCardProps {
   verdict: TriageResponse;
@@ -67,6 +68,14 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
   const [showSources, setShowSources] = useState(false);
 
   const subtitle = locale !== 'en' ? t(SUBTITLE_KEY[verdict.level]) : null;
+
+  // Plan 4.0 — fire audio cue + haptic on first mount of a verdict.
+  // Honors user's mute preference + prefers-reduced-motion (handled inside playVerdictCue).
+  useEffect(() => {
+    playVerdictCue(verdict.level);
+    // Re-fire only when the level itself changes (not on every re-render).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verdict.level]);
 
   return (
     <motion.div

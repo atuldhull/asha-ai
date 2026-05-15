@@ -226,10 +226,15 @@ class GeminiProvider:
 
     async def extract_symptoms(self, text: str, language: str = "en"):  # type: ignore[override]
         from app.llm.base import ExtractedSymptoms as _ES
+        from app.llm.post_process import post_process
 
         data = await extract_symptoms(text, language_hint=language)
         data["provider"] = self.name
-        return _ES.from_dict(data)
+        out = _ES.from_dict(data)
+        # Plan 4.0 — deterministic adversarial post-processor.
+        # Same regex-driven safety layer applied behind the cloud LLM.
+        out, _trace = post_process(out, text)
+        return out
 
     async def followup_question(self, partial, context):  # type: ignore[override]
         if partial.needs_followup and partial.followup_question:

@@ -49,3 +49,6 @@ case_id,age,sex,history,symptoms_text,vitals,expected_level,expected_red_flags,c
 48,36,M,none,"bumped my knee against a table two hours ago painful purple bruise no cut","HR=72",Home Care,,adult,Minor soft tissue injury - R30
 49,30,F,none,"red painful skin on my shoulders after a day at the beach no blisters no fever","HR=74;temp=37.0",Home Care,,adult,Sunburn first-degree - R30
 50,25,M,none,"sore legs and shoulders today after first gym session yesterday no fever no injury","HR=72",Home Care,,adult,Post-exercise muscle soreness DOMS - rest
+51,28,M,none,"my arm is sore from yesterday's gym workout, no other problems","HR=70",Home Care,,adversarial_safeguard,"Plan 4.0 negative test: must NOT trigger vague-stroke FAST (no confusion; clear cause)"
+52,32,F,none,"I have a heavy backpack and my shoulder hurts after a long walk","HR=72",Home Care,,adversarial_safeguard,"Plan 4.0 negative test: must NOT trigger vague-stroke FAST (no body-part match in arm/leg/hand/face/side)"
+53,40,M,none,"I'm a bit confused about my insurance paperwork, no medical symptoms","HR=72",Home Care,,adversarial_safeguard,"Plan 4.0 negative test: must NOT trigger vague-stroke FAST (confusion without unilateral weakness)"

@@ -20,6 +20,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
+from app.agentic.orchestrator import is_enabled as agentic_enabled
+from app.agentic.orchestrator import orchestrate
 from app.core.audit import AuditWriteFailed, write_audit
 from app.core.auth import User, get_optional_user
 from app.core.disclaimers import DISCLAIMER
@@ -29,12 +31,93 @@ from app.core.supabase_client import (
     is_configured,
     service_client,
 )
-from app.models.triage import TriageRequest, TriageResponse
+from app.models.triage import (
+    Citation,
+    DifferentialOut,
+    RedFlagOut,
+    TriageRequest,
+    TriageResponse,
+)
 from app.triage_logic.esi import LEVEL_TO_DB_CODE
 from app.triage_logic.pipeline import PipelineResult, run_pipeline
 
 router = APIRouter(tags=["triage"])
 logger = logging.getLogger(__name__)
+
+
+def _verdict_to_pipeline_result(verdict, req: TriageRequest) -> PipelineResult:
+    """Adapt an agentic Verdict to the PipelineResult shape so the rest of
+    the /triage handler (persist + audit) stays unchanged."""
+    from app.models.triage import CareLevel
+    from app.triage_logic.red_flags import Flag
+
+    flags = [
+        Flag(
+            rule_id=str(f.get("rule_id", "")),
+            rule_name=str(f.get("rule_name", "")),
+            force_level=str(f.get("force_level", "Emergency Room")),
+            reasoning=str(f.get("reasoning", "")),
+            citation=str(f.get("citation", "")),
+        )
+        for f in verdict.red_flags
+    ]
+    citations_models: list[Citation | str] = [
+        Citation(
+            id=str(s.get("id", "")),
+            source=str(s.get("source", "")),
+            section=str(s.get("section", "")) or None,
+            text=str(s.get("text", "")) or None,
+            score=float(s.get("score") or 0.0),
+        )
+        for s in verdict.citations
+    ]
+    response = TriageResponse(
+        level=CareLevel(verdict.level),
+        reasoning=verdict.reasoning,
+        red_flags=[
+            RedFlagOut(rule_id=f.rule_id, rule_name=f.rule_name, citation=f.citation)
+            for f in flags
+        ],
+        disclaimer=verdict.disclaimer,
+        esi=verdict.esi,
+        confidence=verdict.confidence,
+        citations=citations_models,
+    )
+
+    # Extract symptom + history tokens from the recorded tool calls so the
+    # audit log + Supabase verdict row include them.
+    sym_tokens: list[str] = []
+    hist_tokens: list[str] = []
+    vitals: dict = {}
+    severity_score = 0.0
+    esi = verdict.esi or 5
+    ml_version: str | None = None
+    for tc in verdict.tool_calls:
+        if tc.name == "extract_symptoms":
+            sym_tokens = [s.get("name", "") for s in (tc.result.get("symptoms") or [])]
+        elif tc.name == "get_red_flags":
+            args = tc.args or {}
+            hist_tokens = list(args.get("history") or [])
+            vitals = dict(args.get("vitals") or {})
+        elif tc.name == "compute_esi":
+            severity_score = float(tc.result.get("severity") or 0.0)
+            esi = int(tc.result.get("esi_level") or esi)
+    return PipelineResult(
+        response=response,
+        refused=verdict.refusal_category is not None,
+        refusal_category=verdict.refusal_category,
+        symptom_tokens=sym_tokens,
+        history_tokens=hist_tokens,
+        vitals=vitals,
+        flags=flags,
+        severity_score=severity_score,
+        ml_label=None,
+        ml_confidence=verdict.confidence,
+        ml_version=ml_version,
+        esi=esi,
+        final_level=verdict.level,
+        feature_vector={},
+    )
 
 
 def _persist_verdict(
@@ -111,25 +194,47 @@ async def triage(
         # can see it; SlowAPI keys off `X-User-Id` when present.
         request.scope.setdefault("state", {})
 
-    pipeline = run_pipeline(
-        symptoms_text=req.symptoms,
-        age=req.age,
-        sex=req.sex.value if req.sex else None,
-        history=req.history,
-        vitals=req.vitals,
-    )
-
-    # Off-topic (non_medical) refusal becomes a 422; drug_dosing and
-    # suicidal_ideation both return 200 with the safety response body.
-    if pipeline.refusal_category == "non_medical":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "code": "non_medical",
-                "message": "ASHA-AI only handles medical triage.",
-                "disclaimer": DISCLAIMER,
-            },
+    # Plan 4.0 — when AGENTIC_MODE is on, route through the agentic
+    # orchestrator (Gemini function-calling) and adapt to PipelineResult.
+    if agentic_enabled():
+        from app.agentic.orchestrator import Verdict
+        verdict: Verdict = await orchestrate(
+            patient_text=req.symptoms,
+            age=req.age,
+            sex=req.sex.value if req.sex else None,
+            history=req.history,
+            vitals=req.vitals,
         )
+        if verdict.refusal_category == "non_medical":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "non_medical",
+                    "message": verdict.reasoning,
+                    "disclaimer": DISCLAIMER,
+                },
+            )
+        pipeline = _verdict_to_pipeline_result(verdict, req)
+    else:
+        pipeline = run_pipeline(
+            symptoms_text=req.symptoms,
+            age=req.age,
+            sex=req.sex.value if req.sex else None,
+            history=req.history,
+            vitals=req.vitals,
+        )
+
+        # Off-topic (non_medical) refusal becomes a 422; drug_dosing and
+        # suicidal_ideation both return 200 with the safety response body.
+        if pipeline.refusal_category == "non_medical":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "non_medical",
+                    "message": "ASHA-AI only handles medical triage.",
+                    "disclaimer": DISCLAIMER,
+                },
+            )
 
     # Persist + audit. Both are best-effort when Supabase is missing.
     verdict_id = _persist_verdict(
