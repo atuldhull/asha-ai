@@ -1,0 +1,172 @@
+# ASHA-AI · CI (continuous integration)
+# Tier 6.6 Phase G · runs on every PR + every push to main.
+# Gates:
+#   1. Backend lint + tests (pytest, including Plan 4.0 eval suite — must hold floor)
+#   2. ML eval regression (run_eval.py — 100% ER recall required)
+#   3. Frontend lint + build + typecheck
+#   4. Doc-drift check (INDEX.md references every doc that exists)
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ──────────── Backend ────────────
+  backend:
+    name: backend · pytest + Plan 4.0 floor
+    runs-on: ubuntu-22.04
+    env:
+      DATABASE_URL: "postgresql+psycopg://asha:asha@localhost:5432/asha_ai_test"
+      REDIS_URL: "redis://localhost:6379/0"
+      JWT_SECRET: "ci-test-secret-not-for-prod"
+      LLM_PROVIDER: "gemini25-flash"
+      # Plan 4.0 floor — CI must hold these floors per METHODOLOGY §P4.5.
+      PYTEST_ADDOPTS: "-q --strict-markers"
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: asha
+          POSTGRES_PASSWORD: asha
+          POSTGRES_DB: asha_ai_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U asha"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 6
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,ml]"
+
+      - name: Apply Alembic migrations
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: Run pytest (full suite — Plan 1.0 → Tier 6.6)
+        working-directory: backend
+        run: python -m pytest -q
+
+      - name: Plan 4.0 floor gate (explicit)
+        working-directory: backend
+        run: |
+          python -m pytest tests/test_eval_p4.py tests/test_safety_property.py tests/test_red_flags.py -q
+
+  # ──────────── ML ────────────
+  ml:
+    name: ml · run_eval.py + ER recall floor
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install backend ml deps (shared)
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[ml]"
+
+      - name: ML eval
+        working-directory: ml
+        run: python run_eval.py
+        # run_eval.py exits non-zero if ER recall < 1.0 on the test split.
+
+  # ──────────── Frontend ────────────
+  frontend:
+    name: frontend · lint + build + typecheck
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build (production)
+        working-directory: frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE: "http://localhost:8000"
+
+  # ──────────── Doc-drift check ────────────
+  docs:
+    name: docs · INDEX consistency + care-string discipline
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify INDEX.md references every doc in docs/
+        run: |
+          set -e
+          missing=0
+          for f in $(find docs -maxdepth 2 -name '*.md' -not -name 'INDEX.md' -not -path '*/research/*'); do
+            relpath=${f#docs/}
+            if ! grep -qF "$relpath" docs/INDEX.md; then
+              echo "::warning::docs/INDEX.md does not reference $relpath"
+              missing=$((missing + 1))
+            fi
+          done
+          # Don't fail CI on this — just warn. Doc-drift is a Role D follow-up.
+          echo "doc-drift warnings: $missing"
+
+      - name: Care-level string discipline (must remain exact English)
+        run: |
+          set -e
+          # Forbid any paraphrasing of the three exact care-level strings in code/docs.
+          if grep -rE "'(home care|clinic visit|emergency room)'" --include="*.py" --include="*.ts" --include="*.tsx" -i . | grep -vE "'(Home Care|Clinic Visit|Emergency Room)'" | head -5; then
+            echo "::error::Found case-incorrect care-level string. Care-level English strings MUST be exact: Home Care / Clinic Visit / Emergency Room."
+            exit 1
+          fi
+
+      - name: Disclaimer presence sanity check
+        run: |
+          set -e
+          if ! grep -rq "not a replacement for professional medical diagnosis" --include="*.py" backend/app/; then
+            echo "::error::Canonical disclaimer string missing from backend/app/."
+            exit 1
+          fi

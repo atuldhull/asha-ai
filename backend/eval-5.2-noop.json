@@ -1,0 +1,463 @@
+[
+  {
+    "case_id": "1",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": [
+      "R1_STEMI"
+    ]
+  },
+  {
+    "case_id": "2",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "3",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "geriatric",
+    "red_flags_seen": [
+      "R2_STROKE_FAST"
+    ]
+  },
+  {
+    "case_id": "4",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "pediatric",
+    "red_flags_seen": [
+      "R4_SEPSIS",
+      "R6_PEDIATRIC_DANGER"
+    ]
+  },
+  {
+    "case_id": "5",
+    "expected": "Home Care",
+    "predicted": "Clinic Visit",
+    "match": false,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "6",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": [
+      "R7_SEVERE_ASTHMA"
+    ]
+  },
+  {
+    "case_id": "7",
+    "expected": "Clinic Visit",
+    "predicted": "Clinic Visit",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "8",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "pregnancy",
+    "red_flags_seen": [
+      "R8_HEMORRHAGE"
+    ]
+  },
+  {
+    "case_id": "9",
+    "expected": "Clinic Visit",
+    "predicted": "Clinic Visit",
+    "match": true,
+    "category": "refusal",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "10",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "refusal",
+    "red_flags_seen": [
+      "R9_SUICIDAL"
+    ]
+  },
+  {
+    "case_id": "11",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": [
+      "R4_SEPSIS"
+    ]
+  },
+  {
+    "case_id": "12",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "pediatric",
+    "red_flags_seen": [
+      "R4_SEPSIS"
+    ]
+  },
+  {
+    "case_id": "13",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "pregnancy",
+    "red_flags_seen": [
+      "R2_STROKE_FAST"
+    ]
+  },
+  {
+    "case_id": "14",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": [
+      "R5_DKA"
+    ]
+  },
+  {
+    "case_id": "15",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "pediatric",
+    "red_flags_seen": [
+      "R4_SEPSIS"
+    ]
+  },
+  {
+    "case_id": "16",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": [
+      "R7_SEVERE_ASTHMA"
+    ]
+  },
+  {
+    "case_id": "17",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": [
+      "R1_STEMI"
+    ]
+  },
+  {
+    "case_id": "18",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "geriatric",
+    "red_flags_seen": [
+      "R8_HEMORRHAGE"
+    ]
+  },
+  {
+    "case_id": "19",
+    "expected": "Emergency Room",
+    "predicted": "Emergency Room",
+    "match": true,
+    "category": "pediatric",
+    "red_flags_seen": [
+      "R3_ANAPHYLAXIS"
+    ]
+  },
+  {
+    "case_id": "20",
+    "expected": "Clinic Visit",
+    "predicted": "Home Care",
+    "match": false,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "21",
+    "expected": "Clinic Visit",
+    "predicted": "Emergency Room",
+    "match": false,
+    "category": "adult",
+    "red_flags_seen": [
+      "R4_SEPSIS"
+    ]
+  },
+  {
+    "case_id": "22",
+    "expected": "Clinic Visit",
+    "predicted": "Emergency Room",
+    "match": false,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "23",
+    "expected": "Clinic Visit",
+    "predicted": "Clinic Visit",
+    "match": true,
+    "category": "geriatric",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "24",
+    "expected": "Clinic Visit",
+    "predicted": "Home Care",
+    "match": false,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "25",
+    "expected": "Clinic Visit",
+    "predicted": "Clinic Visit",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "26",
+    "expected": "Clinic Visit",
+    "predicted": "Clinic Visit",
+    "match": true,
+    "category": "pediatric",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "27",
+    "expected": "Clinic Visit",
+    "predicted": "Home Care",
+    "match": false,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "28",
+    "expected": "Clinic Visit",
+    "predicted": "Clinic Visit",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "29",
+    "expected": "Clinic Visit",
+    "predicted": "Emergency Room",
+    "match": false,
+    "category": "adult",
+    "red_flags_seen": [
+      "R2_STROKE_FAST"
+    ]
+  },
+  {
+    "case_id": "30",
+    "expected": "Clinic Visit",
+    "predicted": "Home Care",
+    "match": false,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "31",
+    "expected": "Clinic Visit",
+    "predicted": "Clinic Visit",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "32",
+    "expected": "Clinic Visit",
+    "predicted": "Home Care",
+    "match": false,
+    "category": "pediatric",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "33",
+    "expected": "Clinic Visit",
+    "predicted": "Home Care",
+    "match": false,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "34",
+    "expected": "Clinic Visit",
+    "predicted": "Home Care",
+    "match": false,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "35",
+    "expected": "Clinic Visit",
+    "predicted": "Clinic Visit",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "36",
+    "expected": "Clinic Visit",
+    "predicted": "Home Care",
+    "match": false,
+    "category": "pregnancy",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "37",
+    "expected": "Clinic Visit",
+    "predicted": "Clinic Visit",
+    "match": true,
+    "category": "geriatric",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "38",
+    "expected": "Clinic Visit",
+    "predicted": "Home Care",
+    "match": false,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "39",
+    "expected": "Home Care",
+    "predicted": "Emergency Room",
+    "match": false,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "40",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "41",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "42",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "43",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "44",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "45",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "46",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "47",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "48",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "49",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "50",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adult",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "51",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adversarial_safeguard",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "52",
+    "expected": "Home Care",
+    "predicted": "Home Care",
+    "match": true,
+    "category": "adversarial_safeguard",
+    "red_flags_seen": []
+  },
+  {
+    "case_id": "53",
+    "expected": "Home Care",
+    "predicted": "Emergency Room",
+    "match": false,
+    "category": "adversarial_safeguard",
+    "red_flags_seen": [
+      "R2_STROKE_FAST"
+    ]
+  }
+]

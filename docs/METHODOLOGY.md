@@ -538,6 +538,206 @@ The Plan 4.0 numbers **don't move the headline emergency-miss metric** — by de
 
 ---
 
+## P5. Plan 5.1 methodology — dynamic 0–100 risk score with trajectory
+
+Plan 5.1 adds a continuous risk scoring layer between the deterministic rule engine (§P2) and the doctor cockpit's triage queue. The 9 red-flag rules and ESI v5 verdict from Plan 2.0 stay load-bearing — the risk score is a **tie-breaker between same-ESI cases**, not a replacement for any safety guarantee.
+
+Backend source: [`backend/app/risk/scoring.py`](../backend/app/risk/scoring.py).
+Frontend mirror: [`frontend/lib/risk.ts`](../frontend/lib/risk.ts).
+Parity smoke: [`scripts/smoke_5_1_parity.ps1`](../scripts/smoke_5_1_parity.ps1) + `.py`.
+
+### P5.1 Why a 0–100 score on top of the rules
+
+The 9 red-flag rules answer a binary question per pathology: "does this fire R1 STEMI? does this fire R6 pediatric danger?" That is correct for safety, but it leaves the doctor cockpit with no within-bucket ordering — two ESI-3 Clinic Visit cases look identical even when one is clinically much closer to escalation. The 0–100 score gives the cockpit a continuous ordering plus a trajectory signal (the patient is getting worse hour-over-hour) that ESI levels alone cannot represent.
+
+### P5.2 The math
+
+```
+score_symptoms   = Σ over symptoms (base × severity^0.7 × 1.5 × time_factor)   capped at 100
+score_comorb     = Σ over comorbidities (clinical weight)                       capped at 30
+score_vital      = +25 if RR>30 or RR<10
+                 + +10 if RR>25
+                 + +20 if HR>130 or HR<45
+                 + +8  if HR>110
+raw              = score_symptoms × age_multiplier + score_comorb + score_vital
+score_base       = min(round(raw), 100)
+trajectory       = linear-regression slope on last N risk-history points
+score            = min(round(score_base × trajectory_multiplier), 100)
+```
+
+Where:
+- `severity ∈ [1, 10]` from extracted symptoms, non-linearly amplified (severity 10 weighs much more than severity 5)
+- `time_factor = 1.3` if onset < 6 h · `1.1` if onset < 24 h · `0.85` if onset ≥ 72 h · else `1.0`
+- `age_multiplier`: under-2 ×1.8 (WHO IMCI under-2 window) · under-5 ×1.5 · 5–12 ×1.2 · 12–60 ×1.0 · 60–75 ×1.4 · 75+ ×1.8
+- Symptom weights anchored to ESI v5 acuity buckets (Gilboy 2020) + WHO IMCI danger-sign weights (WHO/UNICEF 2014)
+- Comorbidity weights from India MoHFW STG comorbidity flags + WHO IMCI high-risk modifiers
+- Trajectory multipliers: `rapidly_worsening ×1.3` · `worsening ×1.15` · `stable ×1.0` · `improving ×0.9` · `insufficient_data ×1.0`
+
+The score classifies into four levels: `score ≥ 70` → CRITICAL · `≥ 50` → HIGH · `≥ 30` → MODERATE · else LOW. Each level carries a deterministic action string ("Go to emergency room now" / "See a doctor within 2 hours" / "See a doctor within 24 hours" / "Monitor at home — rest and hydrate").
+
+### P5.3 Safety properties (load-bearing invariants)
+
+Plan 5.1 introduces a `risk_escalated` boolean on every `TriageResponse` and the `escalate_care_level()` function in `backend/app/risk/scoring.py`. Two invariants:
+
+1. **Risk can only ESCALATE a verdict, never downgrade.** A Clinic Visit becomes Emergency Room if `RiskLevel.CRITICAL` fires; a Home Care becomes Clinic Visit if `RiskLevel.HIGH` fires. The reverse path is forbidden by `_LEVEL_RANK` comparison — risk LOW on a rule-fired Clinic Visit cannot demote it to Home Care.
+
+2. **An existing red-flag-driven Emergency Room verdict is NEVER overridden.** If R1–R9 fired and `has_red_flag_er=True`, the verdict stays Emergency Room regardless of risk score. The score is a tie-breaker for borderline cases, not an override for rule-driven ER routing.
+
+Both invariants are covered by unit tests in `backend/tests/test_risk_scoring.py` (12 tests added at Tier 5.1, total **145 passed / 1 skipped** at Tier 5.1 close, **169 / 1** at Tier 6.4 close including the floor regression test at `backend/tests/test_eval_p4.py`).
+
+### P5.4 Frontend/backend parity
+
+The same scoring function is implemented in two places to keep the in-browser mock identical to the deployed backend:
+
+- `backend/app/risk/scoring.py` (Python, deterministic, p95 < 10 ms over 200 calls)
+- `frontend/lib/risk.ts` (TypeScript, deterministic, in-browser mock fallback when the backend has not redeployed yet)
+
+Both implementations use identical weights, factors, and trajectory math. The parity is verified by `scripts/smoke_5_1_parity.ps1` + `.py` — a smoke test that runs canonical inputs through both pipes and asserts byte-exact agreement on `score`, `level`, `trajectory`, and `components`. Any future weight change must update both files in the same commit.
+
+### P5.5 Plan 5.1 measured numbers (2026-05-15)
+
+```
+Pytest suite:                     145 passed, 1 skipped   (post-5.1 close)
+                                  169 passed, 1 skipped   (post-6.4 + floor regression)
+
+Risk-scoring p95 latency:         < 10 ms over 200 calls
+Load smoke p95 latency:           10.3 ms over 3000 requests, 100% success, 0% error
+
+GET  /api/v1/health   →   version=0.5.1
+
+POST /api/v1/risk/compute
+  (65yo + chest_pain + SOB + diabetes + HTN + rising trajectory)
+  → score=100, level=CRITICAL, trajectory=rapidly_worsening   ✓
+
+POST /api/v1/triage
+  (mild URI)
+  → level=Home Care, risk.score=0, risk_escalated=false   ✓
+
+POST /api/v1/triage
+  (STEMI presentation)
+  → level=Emergency Room, R1_STEMI red flag, risk.score=100/CRITICAL,
+    risk_escalated=false (red-flag-driven ER never overridden)   ✓
+```
+
+**Headline metrics from Plan 4.0 stay unchanged**: 80.8% overall accuracy, macro-F1 0.809, 0 of 15 emergency misses. Risk scoring does not move the triage-level verdict on the 53 eval cases (rule layer dominates); it only reorders within-ESI cases in the doctor cockpit. The behavior is correct: a non-load-bearing tie-breaker, exactly as designed.
+
+### P5.6 Known Plan 5.1 limitations (deferred to 5.2 / 5.3 / 5.4)
+
+1. **No trajectory persistence without longitudinal memory.** Plan 5.1 trajectory computes from `risk_history[]` passed in the request — the cockpit can sustain it across a session, but cross-session memory ships in Plan 5.3 (ChromaDB + salted patient hash). Until then, trajectory resets when the patient closes the tab.
+2. **Vitals are accepted but rarely provided** in voice/text triage flows. The vital bonus contributes 0 to most live triages today. Wearable integration is the v2 path (see [`docs/WEARABLES.md`](WEARABLES.md)).
+3. **Browser test on a real Android phone after backend wire-up** is the only Plan 5.1 open gate per [`docs/PENDING_USER_ACTIONS.md`](PENDING_USER_ACTIONS.md) (5.1.A.opt).
+4. **The 53-case eval is not regenerated to include risk-trajectory cases.** v2 target: 10 longitudinal cases with multi-turn risk-score evolution validated against MBBS clinical judgment (carry-forward to Plan 5.2 + Plan 5.3 evals).
+5. **The 0–100 calibration is anchored to clinical literature, not yet validated against MBBS judgment** on the same eval set. MBBS sign-off on risk-score classification thresholds (70 / 50 / 30 cutoffs) is a Plan-5.1-known-limitation until Member D arranges the review session.
+
+---
+
+## P6. Plan 6.1 methodology — Symptom Cinema 3D · Pin v1.5 · FMA-coded body taxonomy
+
+Plan 6.1 is the first tier of the post-hackathon production-frontend ladder (see [`docs/PLAN_6.0.md`](PLAN_6.0.md)). It adds **structured-symptom input via a 3D anatomical body map** alongside the existing free-text + voice paths. Phases A (frontend 3D + 69-region taxonomy) and B (backend Pin Pydantic model + FMA validator + LLM-prompt injection) shipped 2026-05-15 — same day as the hackathon submission build — using a procedural placeholder humanoid until the BodyParts3D + Z-Anatomy asset pipeline is wired (Phase A handoff items per [`docs/PENDING_USER_ACTIONS.md`](PENDING_USER_ACTIONS.md) 6.1.A.bp3d / .zanatomy / .hdri).
+
+Backend source:
+- [`backend/app/models/triage.py`](../backend/app/models/triage.py) — `Pin` Pydantic v1 + v1.5
+- [`backend/app/triage_logic/body_map.py`](../backend/app/triage_logic/body_map.py) — graceful FMA validator
+- [`backend/app/agentic/tools.py`](../backend/app/agentic/tools.py) — `tool_extract_symptoms` FMA prompt injection
+- [`backend/scripts/sync_regions.py`](../backend/scripts/sync_regions.py) — `regions.ts` → `regions.json` sync
+
+Frontend source:
+- [`frontend/lib/body-map/regions.ts`](../frontend/lib/body-map/regions.ts) — 69-region taxonomy (49 surface + 20 internal organs), FMA-coded, en/hi/kn translations
+- [`frontend/components/3d/BodyMap3D.tsx`](../frontend/components/3d/BodyMap3D.tsx) — R3F procedural humanoid with named meshes + raycast pinning
+- [`frontend/app/triage/body-map-3d/page.tsx`](../frontend/app/triage/body-map-3d/page.tsx) — new route, WebGL2 + reduced-motion gating with fallback to `/triage?fallback=…`
+
+### P6.1 Why structured input on top of free text
+
+Free-text and voice are accessible to the ASHA worker, but they lose spatial precision. "It hurts in my shoulder" is six muscles, three joints, two visceral referrals — different rules fire on each. The 3D body map gives the user a pin-and-pain-quality form that the LLM extractor cannot lose in translation. FMA codes give the rule engine and the eventual ICD-11 mapper an unambiguous anatomical reference that survives language pivot (Hindi/Kannada → English → ICD-11) intact.
+
+### P6.2 Pin schema — v1 contract + v1.5 additive extension
+
+The Pin Pydantic model is **additive across versions**: Plan 4.0 / 5.x payloads without structured symptoms still validate, and v1.5 fields are all optional. Backward compatibility is a load-bearing property.
+
+```
+Pin (v1, required for any pin):
+  body_region        str           (1–64 chars, taxonomy-validated when regions.json present)
+  body_view          {front | back | left | right | interior}
+  x, y               float ∈ [0, 1] (normalized hit coordinates on the body texture)
+  intensity          int ∈ [1, 10]
+  quality            list of {burning | stabbing | throbbing | pressure | cramping}
+  duration_band      {just_started | few_hours | since_yesterday | days_or_weeks}
+  aggravators        list of {moving | eating | breathing | pressing | standing_up | nothing}
+
+Pin (v1.5, all optional):
+  fma_id             str (e.g. "FMA:43799") — Foundational Model of Anatomy ID
+  mesh_position_3d   (x, y, z) — 3D coordinate when input_mode=body_map_3d
+  layer_visible      {skin | muscle | skeleton | organs} — for the future cutaway view
+```
+
+`TriageRequest` gains two optional fields: `structured_symptoms: list[Pin] | None` and `input_mode: {text | voice | body_map | body_map_3d}`. The `body_view` Literal union was extended in Plan 6.1-B to include `left`, `right`, and `interior` for 3D viewports — front/back-only clients still validate.
+
+### P6.3 Region taxonomy and FMA codes
+
+The taxonomy is authored in `frontend/lib/body-map/regions.ts` and synced to `backend/app/data/regions.json` via `backend/scripts/sync_regions.py` (run after every taxonomy update). 69 regions today (49 surface + 20 internal organs); Tier 6.2 cutaway phase will extend toward the 120-region target.
+
+Each region carries:
+- `id` — kebab-case canonical key used by Pin.body_region
+- `mesh_name` — the Three.js mesh name the raycast hits
+- `clinical_term` — the English clinical phrase (e.g. "anterior left chest")
+- `fma_id` — Foundational Model of Anatomy code (e.g. `FMA:43799`)
+- `icd11_anatomy` — ICD-11 anatomy code for the most common regions
+- `translations.{en, hi, kn}` — for the multilingual UI
+
+**FMA codes are placeholders pending MBBS sign-off** (6.1.D per [`docs/MBBS_TRACKER.md`](MBBS_TRACKER.md) Tier 6.1 protocol). The backend logs warnings on mismatch but does not reject — this lets us ship the UI while the clinical validation pass happens in parallel.
+
+### P6.4 LLM prompt FMA injection (Role C bit)
+
+When `structured_symptoms` is non-empty and any pin carries an `fma_id`, the agentic `tool_extract_symptoms` injects a single deterministic line into the LLM prompt context:
+
+```
+Anatomical region: <clinical_term> (FMA: <fma_id>)
+```
+
+The JSON output schema of `extract_symptoms` is unchanged — the LLM still returns the same symptom list it would for a free-text query. The FMA line is grounding context, not a new output field. This keeps the agentic 5-tool architecture (§P4.1) byte-stable with Plan 4.0 clients while letting the extractor disambiguate "shoulder pain" (deltoid vs supraspinatus vs subscapular) when the pin tells us which one was tapped.
+
+### P6.5 Graceful no-op validator (forward/backward compatibility)
+
+The FMA validator (`app/triage_logic/body_map.py::validate_fma`) checks 4 candidate paths in order: `backend/app/data/regions.json` → `regions.yaml` → frontend `regions.json` → frontend `regions.yaml`. Whichever lands first wins.
+
+If none exist, the validator returns `True` for every input — a one-shot startup warning is logged, but payloads are never rejected. This is deliberate: during deploys the frontend may legitimately be ahead of the backend (Role A updates `regions.ts`, Role B's `sync_regions.py` runs at next deploy). Logging-only behaviour also prevents a regions-file outage from breaking triage.
+
+**Verified end-to-end** (per the 2026-05-15 regions sync run): `validate_fma("chest_left_anterior", "FMA:43799")` → `True`; mismatched FMA → `False` with warning. 69 regions synced, all with `fma_id`.
+
+### P6.6 Plan 6.1 measured numbers (2026-05-15)
+
+```
+Plan 6.1-B test suite:        7 / 7 PASS  (tests/test_pin_schema_v15.py)
+  - Plan 4.0 backward-compat:        ✓
+  - v1 Pin validation:               ✓
+  - v1.5 additive extension:         ✓
+  - body_view union (incl. 3D):      ✓
+  - FMA injection into LLM prompt:   ✓
+  - graceful no-op validator:        ✓
+  - regions.json load + lookup:      ✓
+
+Pytest suite at Tier 6.1-B close:    156 passed, 1 skipped
+Pytest suite at Tier 6.4 close:      169 passed, 1 skipped  (includes floor regression)
+Floor regression test:               6 / 6 PASS, 2.37 s  (tests/test_eval_p4.py)
+                                     verified 2026-05-15
+
+Frontend 3D route bundle:    307 KB initial JS / 527 KB First Load  (3D-only on /triage/body-map-3d)
+Other routes unchanged:      Plan 4.0 chat at 8.91 KB initial JS
+```
+
+**Headline 53-case eval metrics from Plan 4.0 stay unchanged** — Plan 6.1 adds an input mode and a prompt-grounding signal, not a new triage decision. Eval cases that don't include pins follow the same Plan 4.0 path bit-for-bit.
+
+### P6.7 Known Plan 6.1 limitations (deferred to 6.1 C/D + asset pipeline)
+
+1. **Procedural placeholder humanoid is the rendered body today**, not anatomically realistic. Realistic anatomy ships when Phase A's asset handoff lands: BodyParts3D OBJ packs (CC BY-SA 2.1 JP) + Z-Anatomy skin shells (CC BY-SA 4.0) + `studio_small_07_1k.hdr` (CC0), all run through `scripts/build-anatomy.mjs` into 9 GLBs under a 30 MB total budget.
+2. **FMA codes are unvalidated against MBBS clinical judgment** — Phase D MBBS reviewer 10-region anatomy walk is the gating step. Per [`MBBS_TRACKER.md`](MBBS_TRACKER.md) Tier 6.1 protocol; sign-off lands at `docs/mbbs_signoffs/6_1_anatomy.md`.
+3. **Phase C (ML/prep)** is not yet started — `ml/migration_plan_6_5.md`, `ml/migration_baseline.md`, and `ml/eval_extensions_6_5.md` are pending Role C work, blocked on explicit "go 6.1.C" per the tier-pause-confirm rule.
+4. **Phase D (Docs)** is not yet started — SYMPTOM_CINEMA §8 update, ARCHITECTURE §0.95, QA_WAR_GAME 3 new Qs, MBBS_TRACKER Tier 6.1 protocol, DEMO_SCRIPT 6.1 cut sheet, INDEX update, and `checklists/PLAN_6_1_SUBMISSION.md` 45-check rerun — pending Role D + parallel work.
+5. **Pin v1.5 carries FMA into the LLM but does not yet feed the rule engine** — R1–R9 still consume the LLM-extracted symptom names. Tier 6.5 brain-stack upgrade is where FMA → rule mapping becomes load-bearing (per [`docs/PROMPTS_PLAN_6.5.md`](PROMPTS_PLAN_6.5.md)).
+6. **Lighthouse audit on a real Android phone** is the only optional Plan 6.1-A gate (6.1.A.lighthouse) — 307 KB initial JS is heavy but unavoidable for R3F-based 3D. Real-device numbers TBD.
+
+---
+
 ## 1. The three-layer AI architecture — and why
 
 Most failed healthcare AI products were single-layer: either pure rule engine (Babylon's "decision trees in Excel") or pure LLM wrapper (current crop of 2024-2025 entrants). Both have known failure modes:

@@ -112,12 +112,16 @@ def get_provider(force: str | None = None) -> LLMProvider:
     if mode == "ollama":
         from app.llm.ollama import OllamaProvider
         provider: LLMProvider = OllamaProvider()
-    elif mode == "gemini":
+    elif mode == "gemini" or mode == "gemini25-flash":
         from app.llm.gemini import GeminiProvider
         provider = GeminiProvider()
+    elif mode == "llama33-together":
+        from app.llm.llama33_together import LlamaTogetherProvider
+        provider = LlamaTogetherProvider()
     else:
         raise ValueError(
-            f"Unknown LLM_PROVIDER={mode!r}; expected 'gemini' or 'ollama'"
+            f"Unknown LLM_PROVIDER={mode!r}; expected one of: "
+            "'gemini' | 'gemini25-flash' | 'ollama' | 'llama33-together'"
         )
 
     _PROVIDER_SINGLETON = provider

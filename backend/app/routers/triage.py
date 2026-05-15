@@ -48,7 +48,9 @@ logger = logging.getLogger(__name__)
 def _verdict_to_pipeline_result(verdict, req: TriageRequest) -> PipelineResult:
     """Adapt an agentic Verdict to the PipelineResult shape so the rest of
     the /triage handler (persist + audit) stays unchanged."""
+    from app.models.risk import RiskComputeRequest, SymptomInput, VitalProxy
     from app.models.triage import CareLevel
+    from app.risk.scoring import compute_score, escalate_care_level
     from app.triage_logic.red_flags import Flag
 
     flags = [
@@ -71,19 +73,6 @@ def _verdict_to_pipeline_result(verdict, req: TriageRequest) -> PipelineResult:
         )
         for s in verdict.citations
     ]
-    response = TriageResponse(
-        level=CareLevel(verdict.level),
-        reasoning=verdict.reasoning,
-        red_flags=[
-            RedFlagOut(rule_id=f.rule_id, rule_name=f.rule_name, citation=f.citation)
-            for f in flags
-        ],
-        disclaimer=verdict.disclaimer,
-        esi=verdict.esi,
-        confidence=verdict.confidence,
-        citations=citations_models,
-    )
-
     # Extract symptom + history tokens from the recorded tool calls so the
     # audit log + Supabase verdict row include them.
     sym_tokens: list[str] = []
@@ -102,6 +91,40 @@ def _verdict_to_pipeline_result(verdict, req: TriageRequest) -> PipelineResult:
         elif tc.name == "compute_esi":
             severity_score = float(tc.result.get("severity") or 0.0)
             esi = int(tc.result.get("esi_level") or esi)
+
+    # Plan 5.1 — attach risk + apply escalate-only safety property on the
+    # agentic path too.
+    risk_request = RiskComputeRequest(
+        symptoms=[SymptomInput(name=t, severity=6, onset_hours_ago=12.0) for t in sym_tokens],
+        age=req.age if req.age is not None else 35,
+        sex=req.sex.value if req.sex else "other",
+        comorbidities=list(hist_tokens),
+        vital_proxy=VitalProxy(
+            breathing_rate=vitals.get("rr") if isinstance(vitals.get("rr"), int) else None,
+            heart_rate=vitals.get("hr") if isinstance(vitals.get("hr"), int) else None,
+        ),
+    )
+    risk_assessment = compute_score(risk_request)
+    has_red_flag_er = any(f.force_level == "Emergency Room" for f in flags)
+    escalated_level = escalate_care_level(
+        verdict.level, risk_assessment, has_red_flag_er=has_red_flag_er,
+    )
+    risk_escalated = escalated_level != verdict.level
+
+    response = TriageResponse(
+        level=CareLevel(escalated_level),
+        reasoning=verdict.reasoning,
+        red_flags=[
+            RedFlagOut(rule_id=f.rule_id, rule_name=f.rule_name, citation=f.citation)
+            for f in flags
+        ],
+        disclaimer=verdict.disclaimer,
+        esi=verdict.esi,
+        confidence=verdict.confidence,
+        citations=citations_models,
+        risk=risk_assessment,
+        risk_escalated=risk_escalated,
+    )
     return PipelineResult(
         response=response,
         refused=verdict.refusal_category is not None,
@@ -115,7 +138,7 @@ def _verdict_to_pipeline_result(verdict, req: TriageRequest) -> PipelineResult:
         ml_confidence=verdict.confidence,
         ml_version=ml_version,
         esi=esi,
-        final_level=verdict.level,
+        final_level=escalated_level,
         feature_vector={},
     )
 
@@ -198,12 +221,19 @@ async def triage(
     # orchestrator (Gemini function-calling) and adapt to PipelineResult.
     if agentic_enabled():
         from app.agentic.orchestrator import Verdict
+        # Plan 6.1: structured_symptoms (body-map pins) flow into
+        # tool_extract_symptoms so the FMA-aligned anatomical context
+        # block reaches the LLM prompt.
+        pins_payload: list[dict] | None = None
+        if req.structured_symptoms:
+            pins_payload = [p.model_dump() for p in req.structured_symptoms]
         verdict: Verdict = await orchestrate(
             patient_text=req.symptoms,
             age=req.age,
             sex=req.sex.value if req.sex else None,
             history=req.history,
             vitals=req.vitals,
+            pins=pins_payload,
         )
         if verdict.refusal_category == "non_medical":
             raise HTTPException(

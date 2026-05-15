@@ -1,0 +1,292 @@
+# ASHA-AI · production stack (Tier 6.6 Phase D + Tier 6.5 Phase A bundled)
+# ========================================================================
+# Single-command production deployment. Includes:
+#   - postgres  (with PostGIS for Plan 5.4 outbreak detection)
+#   - valkey    (Apache-licensed Redis fork — Tier 6.5 Phase A swap-in)
+#   - qdrant    (Tier 6.5 Phase D hybrid retrieval)
+#   - minio     (Tier 6.6 Phase D S3-compatible file store)
+#   - traefik   (Tier 6.6 Phase D reverse proxy + Let's Encrypt SSL)
+#   - backend   (FastAPI)
+#   - worker    (Celery — Tier 6.6 Phase E)
+#   - flower    (Celery monitoring UI — Tier 6.6 Phase E)
+#   - prometheus + grafana  (Tier 6.6 Phase F observability — opt-in profile)
+#
+# Bring up:
+#   cd D:\hack\infra
+#   copy .env.example .env  # then edit with real secrets
+#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml --profile observability up -d  # +Prom+Grafana
+#
+# Stop:
+#   docker compose -f docker-compose.prod.yml down
+#
+# Persistent data is in named volumes (postgres_data, qdrant_data, minio_data,
+# valkey_data, traefik_letsencrypt). docker compose down -v wipes data — only
+# do that on staging, NEVER on production.
+
+services:
+
+  # ──────────── Postgres + PostGIS (Plan 5.4 + Tier 6.6) ────────────
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: ashaai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-asha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}  # required via .env
+      POSTGRES_DB: ${POSTGRES_DB:-asha_ai}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Initialise the postgis extension on first boot.
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-asha} -d ${POSTGRES_DB:-asha_ai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [asha]
+
+  # ──────────── Valkey 8 — drop-in Redis fork (Tier 6.5 Phase A) ────────────
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: ashaai-valkey
+    restart: unless-stopped
+    command: ["valkey-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    networks: [asha]
+
+  # ──────────── Qdrant — Tier 6.5 Phase D hybrid retrieval ────────────
+  qdrant:
+    image: qdrant/qdrant:v1.11.0
+    container_name: ashaai-qdrant
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:6333/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    networks: [asha]
+
+  # ──────────── MinIO — Tier 6.6 Phase D S3-compatible store ────────────
+  minio:
+    image: minio/minio:RELEASE.2024-08-17T01-24-54Z
+    container_name: ashaai-minio
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-asha-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}  # required via .env
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    networks: [asha]
+
+  # ──────────── Backend (FastAPI) ────────────
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: ashaai-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-asha}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-asha_ai}"
+      # Cache + Celery broker
+      REDIS_URL: "redis://valkey:6379/0"  # Valkey speaks the redis protocol
+      CELERY_BROKER_URL: "redis://valkey:6379/1"
+      # Vector store
+      QDRANT_URL: "http://qdrant:6333"
+      # Object store
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:-asha-admin}"
+      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD}"
+      MINIO_BUCKET: "${MINIO_BUCKET:-asha-uploads}"
+      # External providers (cloud LLM, voice, OTP, payments, push)
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      TOGETHER_API_KEY: "${TOGETHER_API_KEY:-}"
+      LLM_PROVIDER: "${LLM_PROVIDER:-gemini25-flash}"
+      BHASHINI_API_KEY: "${BHASHINI_API_KEY:-}"
+      MSG91_AUTH_KEY: "${MSG91_AUTH_KEY:-}"
+      MSG91_OTP_TEMPLATE_ID: "${MSG91_OTP_TEMPLATE_ID:-}"
+      RAZORPAY_KEY_ID: "${RAZORPAY_KEY_ID:-}"
+      RAZORPAY_KEY_SECRET: "${RAZORPAY_KEY_SECRET:-}"
+      RAZORPAY_LIVE: "${RAZORPAY_LIVE:-false}"
+      FCM_SERVICE_ACCOUNT_JSON: "${FCM_SERVICE_ACCOUNT_JSON:-}"
+      WHATSAPP_PHONE_ID: "${WHATSAPP_PHONE_ID:-}"
+      WHATSAPP_ACCESS_TOKEN: "${WHATSAPP_ACCESS_TOKEN:-}"
+      ABDM_BASE_URL: "${ABDM_BASE_URL:-https://dev.abdm.gov.in}"
+      ABDM_CLIENT_ID: "${ABDM_CLIENT_ID:-}"
+      ABDM_CLIENT_SECRET: "${ABDM_CLIENT_SECRET:-}"
+      ABLY_API_KEY: "${ABLY_API_KEY:-}"
+      # Auth
+      JWT_SECRET: "${JWT_SECRET}"  # required via .env
+      JWT_ACCESS_TTL_MIN: "15"
+      JWT_REFRESH_TTL_DAYS: "7"
+      OTP_PROVIDER: "${OTP_PROVIDER:-msg91}"
+      # Observability
+      SENTRY_DSN: "${SENTRY_DSN:-}"
+      SENTRY_ENV: "${SENTRY_ENV:-production}"
+      PROMETHEUS_ENABLED: "true"
+      # Safety
+      DISCLAIMER_TEXT: "This is not a replacement for professional medical diagnosis."
+      # Tier 6.5 feature flags (off by default; flip on per per-phase eval gate)
+      VALKEY: "on"
+      STT_BACKEND: "${STT_BACKEND:-whisper-base}"
+      RAG_BACKEND: "${RAG_BACKEND:-chroma_legacy}"
+      RAG_RERANK: "${RAG_RERANK:-off}"
+      RAG_HYDE: "${RAG_HYDE:-off}"
+      PIPELINE: "${PIPELINE:-legacy}"
+      VISION_TRIAGE: "${VISION_TRIAGE:-off}"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`${API_HOST:-api.asha-ai.in}`)"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+    networks: [asha]
+
+  # ──────────── Celery worker (Tier 6.6 Phase E) ────────────
+  worker:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: ashaai-worker
+    restart: unless-stopped
+    command: ["python", "-m", "celery", "-A", "app.celery_app:celery", "worker", "--loglevel=info", "--concurrency=4"]
+    depends_on:
+      backend:
+        condition: service_started
+      valkey:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER:-asha}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-asha_ai}"
+      CELERY_BROKER_URL: "redis://valkey:6379/1"
+      REDIS_URL: "redis://valkey:6379/0"
+      SENTRY_DSN: "${SENTRY_DSN:-}"
+      SENTRY_ENV: "${SENTRY_ENV:-production}"
+    networks: [asha]
+
+  # ──────────── Flower (Celery monitoring UI · Tier 6.6 Phase E) ────────────
+  flower:
+    image: mher/flower:2.0
+    container_name: ashaai-flower
+    restart: unless-stopped
+    command: ["celery", "flower", "--broker=redis://valkey:6379/1", "--port=5555", "--basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD}"]
+    depends_on:
+      valkey:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.flower.rule=Host(`${FLOWER_HOST:-flower.asha-ai.in}`)"
+      - "traefik.http.routers.flower.entrypoints=websecure"
+      - "traefik.http.routers.flower.tls.certresolver=letsencrypt"
+      - "traefik.http.services.flower.loadbalancer.server.port=5555"
+    networks: [asha]
+
+  # ──────────── Traefik · reverse proxy + SSL (Tier 6.6 Phase D) ────────────
+  traefik:
+    image: traefik:v3.1
+    container_name: ashaai-traefik
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=true"
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.email=${LETSENCRYPT_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--accesslog=true"
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.addrouterslabels=true"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_letsencrypt:/letsencrypt
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic/dynamic.yml:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`${TRAEFIK_HOST:-traefik.asha-ai.in}`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.middlewares=traefik-auth"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_AUTH}"  # htpasswd-formatted
+    networks: [asha]
+
+  # ──────────── Observability stack (opt-in via --profile observability) ────────────
+  prometheus:
+    profiles: ["observability"]
+    image: prom/prometheus:v2.54.0
+    container_name: ashaai-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+    networks: [asha]
+
+  grafana:
+    profiles: ["observability"]
+    image: grafana/grafana:11.1.0
+    container_name: ashaai-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`${GRAFANA_HOST:-grafana.asha-ai.in}`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    networks: [asha]
+
+
+networks:
+  asha:
+    driver: bridge
+
+
+volumes:
+  postgres_data:
+  valkey_data:
+  qdrant_data:
+  minio_data:
+  traefik_letsencrypt:
+  prometheus_data:
+  grafana_data:

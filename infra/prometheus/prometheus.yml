@@ -1,0 +1,34 @@
+# Prometheus scrape config — Tier 6.6 Phase F monitoring
+# Picks up Backend `/metrics` (exposed by `app/observability/prometheus.py`)
+# plus Traefik's built-in metrics endpoint.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: "ashaai-prod"
+
+scrape_configs:
+  - job_name: "backend"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["backend:8000"]
+        labels:
+          service: "backend"
+
+  - job_name: "traefik"
+    static_configs:
+      - targets: ["traefik:8082"]      # Traefik metrics port
+        labels:
+          service: "traefik"
+
+  - job_name: "qdrant"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["qdrant:6333"]
+        labels:
+          service: "qdrant"
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

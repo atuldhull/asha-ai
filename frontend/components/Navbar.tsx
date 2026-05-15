@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Activity, LogOut, Stethoscope, History, UserCircle2 } from 'lucide-react';
+import { Activity, Globe2, LogOut, Stethoscope, History, ShieldCheck, UserCircle2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { isUsingMock } from '@/lib/api';
 import { useUser, signOut } from '@/lib/auth';
@@ -10,6 +10,7 @@ import { useTranslation } from '@/lib/i18n/I18nProvider';
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { MuteToggle } from './MuteToggle';
+import { PatientSwitcher } from './PatientSwitcher';
 
 export function Navbar() {
   const router = useRouter();
@@ -56,13 +57,34 @@ export function Navbar() {
 
           {!loading && user ? (
             <>
+              <PatientSwitcher />
               {user.role === 'doctor' && (
+                <>
+                  <Link
+                    href="/doctor/dashboard"
+                    className="hidden sm:inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors"
+                  >
+                    <Stethoscope className="h-4 w-4" aria-hidden />
+                    {t('nav.cockpit')}
+                  </Link>
+                  <Link
+                    href="/admin/outbreak"
+                    className="hidden md:inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors"
+                    title={t('nav.outbreak')}
+                    aria-label={t('nav.outbreak')}
+                  >
+                    <Globe2 className="h-4 w-4" aria-hidden />
+                  </Link>
+                </>
+              )}
+              {user.role === 'asha' && (
                 <Link
-                  href="/doctor/dashboard"
-                  className="hidden sm:inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors"
+                  href="/asha"
+                  className="hidden sm:inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+                  title={t('nav.asha')}
                 >
                   <Stethoscope className="h-4 w-4" aria-hidden />
-                  {t('nav.cockpit')}
+                  {t('nav.asha')}
                 </Link>
               )}
               <Link
@@ -77,6 +99,14 @@ export function Navbar() {
                 className="rounded-md px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors"
               >
                 {t('nav.triage')}
+              </Link>
+              <Link
+                href="/settings"
+                className="hidden sm:inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors"
+                title={t('nav.settings')}
+                aria-label={t('nav.settings')}
+              >
+                <ShieldCheck className="h-4 w-4" aria-hidden />
               </Link>
               <button
                 onClick={handleSignOut}

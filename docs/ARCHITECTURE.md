@@ -433,6 +433,370 @@ The submitted system is this diagram. The Plan 1.0 keyword-rule engine, the Plan
 
 ---
 
+## 0.95 Plan 6.1 architecture — Symptom Cinema 3D (post-hackathon production track)
+
+Plan 6.1 is the first tier of the [Plan 6.0 ladder](PLAN_6.0.md) — independent of Plan 5.x risk/ML work. Adds a realistic 3D anatomical body view at `/triage/body-map-3d` that runs **alongside** the v1 2D SVG body map (now the reduced-motion / no-WebGL2 / low-perf fallback). The triage backend pipeline is unchanged — Pin v1.5 is an additive schema extension with optional FMA-coded anatomy fields. No regression to Plan 4.0 / 5.x clinical floors.
+
+```
+              Patient — text · voice · 🫀 body
+                              │
+                              ▼
+              ┌──────────────────────────────────────┐
+              │  /triage chat input bar               │
+              │  [ text · 🎤 mic · 🫀 body (3D) ]     │
+              └────────┬──────────────────┬──────────┘
+                       │                  │
+                       │  (body)          │  (body, but…)
+                       ▼                  ▼
+       ┌──────────────────────┐   ┌────────────────────────┐
+       │ /triage/body-map-3d   │◄──│  ReducedMotionContext │
+       │  (Plan 6.1 — new)     │   │  + WebGL2 capability  │
+       │                       │   │  + LOD2 30fps probe   │
+       │  R3F Scene wrapper:   │   └────────────┬───────────┘
+       │  · OrbitControls       │                │ if reduced
+       │  · AdaptiveDpr         │                │ OR no WebGL2
+       │  · EffectComposer       │                │ OR <30fps  ▼
+       │    (Bloom + SSAO)       │     ┌────────────────────────┐
+       │                          │     │ /triage/body-map        │
+       │  BodyMap3D component:    │     │ (v1 SVG — fallback)     │
+       │  · GLB asset (LOD0/1/2)  │     │ unchanged from 3.0/4.0  │
+       │  · BodyParts3D + Z-Anatomy│     └─────────────┬──────────┘
+       │  · meshPhysicalMaterial   │                   │
+       │    transmission 0.15 (SSS)│                   │ same Pin
+       │  · raycast → mesh ID      │                   │ payload
+       │  · pain panel (shadcn     │                   │
+       │    <Sheet> — unchanged    │                   │
+       │    from SYMPTOM_CINEMA v1)│                   │
+       │                           │                   │
+       │  Pin v1.5 (additive):     │                   │
+       │  {body_region, fma_id?,    │                   │
+       │   mesh_position_3d?,       │                   │
+       │   layer_visible?,          │                   │
+       │   body_view + interior,    │                   │
+       │   intensity, quality,      │                   │
+       │   duration_band,           │                   │
+       │   aggravators}             │                   │
+       └──────────────┬────────────┘                   │
+                      │                                │
+                      ▼                                ▼
+              ┌─────────────────────────────────────────────┐
+              │  POST /api/triage                            │
+              │  {structured_symptoms: [Pin v1.5],           │
+              │   input_mode: "body_map_3d" | "body_map",    │
+              │   session_id}                                │
+              │                                              │
+              │  Backend: app/triage_logic/pipeline.py        │
+              │  · extract_symptoms tool (Plan 4.0 agentic) │
+              │    enriched with FMA term in prompt context │
+              │  · everything else unchanged from §0.9       │
+              │                                              │
+              │  Safety property unchanged:                  │
+              │  final = max(rule, esi, imci)                │
+              └────────────────┬─────────────────────────────┘
+                               │
+                               ▼
+                  VerdictCard (RiskTrajectoryCard from Plan 5.1)
+                  Disclaimer footer on every screen
+                  Care-level strings: Home Care · Clinic Visit · Emergency Room
+```
+
+**What Plan 6.1 adds (frontend-only — backend touch is additive):**
+
+- `frontend/public/anatomy/` — 9 optimized GLBs (3 body types × 3 LODs, ≤30 MB combined) + 1 HDRI · CC-BY-SA attribution in `LICENSES/3RD_PARTY.md`
+- `frontend/components/3d/Scene.tsx` — shared R3F Canvas wrapper (PBR + IBL + Bloom + SSAO + reduced-motion aware)
+- `frontend/components/3d/BodyMap3D.tsx` — layered anatomical viewer (skin/muscle/skeleton/organs)
+- `frontend/lib/body-map/regions.yaml` — extended from 60 to ~120 regions with `fma_id`, `bodyparts3d_mesh`, `zanatomy_layer` fields per entry
+- `frontend/app/triage/body-map-3d/page.tsx` — new route with 3 fallback paths (no-WebGL2 redirect · prefers-reduced-motion redirect · sub-30fps perf redirect)
+- `backend/app/models/triage.py` — Pin model gains `fma_id`, `mesh_position_3d`, `layer_visible` (all `Optional[...]`); `body_view` union extended with `"left" | "right" | "interior"`
+- `backend/app/agentic/tools.py` — `extract_symptoms` prompt context enriched with FMA term when a pin carries `fma_id` (no schema change)
+
+**What does NOT change vs Plan 4.0 / 5.x:**
+
+- Care-level strings stay exact (`Home Care` / `Clinic Visit` / `Emergency Room`)
+- The 9 red-flag rules R1–R9 unchanged · safety property unchanged
+- ER recall must remain 100% · 0/15 ER-miss · 11/11 adversarial · 18/18 safety refusal
+- Disclaimer on every screen — including the new 3D body view and pain panel
+- v1 2D SVG body map at `/triage/body-map` continues to ship as the official reduced-motion fallback (NOT deprecated)
+- Plan 5.1 risk scoring + escalation logic unchanged
+
+**Tier-acceptance gate:** [checklists/PLAN_6_1_SUBMISSION.md](checklists/PLAN_6_1_SUBMISSION.md) — 38 checks across asset pipeline, type parity, perf budget on ₹8K Android, a11y, and MBBS clinical sign-off on anatomical accuracy.
+
+---
+
+## 0.96 Plan 6.2 architecture — Cinematic UI primitives (frontend-only · backend unchanged)
+
+Plan 6.2 ships RiskOrb / VoiceWaveform / NeuralNet / Lenis. **Zero backend change.** Each primitive has a reduced-motion fallback that ships alongside it. RiskOrb consumes Plan 5.1 risk fields already in production.
+
+```
+                            /verdict screen (existing)
+                                       │
+        ┌──────────────────────────────┼──────────────────────────────┐
+        ▼                              ▼                              ▼
+  ┌──────────────┐            ┌──────────────────┐         ┌──────────────────┐
+  │  RiskOrb     │ ← Plan 5.1 │ RiskTrajectory   │         │ VerdictCard       │
+  │  (HEADLINE)  │   risk     │ Card (sparkline) │         │ (action+citations)│
+  │              │   fields:  │ — DEMOTES to     │         │  unchanged        │
+  │  3D sphere   │   {score,  │ secondary card   │         └──────────────────┘
+  │  + halo +    │    level,  │ below the orb    │
+  │  pulse-by-   │    traj}   └──────────────────┘
+  │  score +     │
+  │  care-level  │
+  │  badge       │     reduced-motion → static disc + numeric + ↑↓→ arrow
+  └──────────────┘     red-flag-fired → fast pulse + thick red ring + " (Rule)" label
+
+                            /triage chat input bar (existing)
+                                       │
+                                       ▼ (mic button)
+                          ┌──────────────────────────────┐
+                          │ VoiceWaveform                 │
+                          │                                │
+                          │ Web Audio API (AnalyserNode)  │
+                          │ → Canvas2D vertical bars       │
+                          │ → hue 260° (purple) → 180°    │
+                          │   (teal) by amplitude          │
+                          │                                │
+                          │ reduced-motion → "● Recording  │
+                          │   — tap to stop" pill          │
+                          └──────────────────────────────┘
+
+                       Inference gap (post-submit, pre-verdict)
+                                       │
+                                       ▼ (Suspense boundary)
+                          ┌──────────────────────────────┐
+                          │ NeuralNet                      │
+                          │                                │
+                          │ R3F InstancedMesh 4 layers     │
+                          │ 3-5-5-3 nodes (DECORATIVE)     │
+                          │ Activation pulse L→R / 1.2s    │
+                          │                                │
+                          │ Tooltip: "Visual representa-   │
+                          │   tion; not the actual model"  │
+                          │ aria-hidden=true (SR text:     │
+                          │   "Analyzing your symptoms")   │
+                          └──────────────────────────────┘
+
+       /(marketing)/* + /(admin)/* routes ONLY (NOT /triage/* — clinical 1:1 scroll)
+                                       │
+                                       ▼
+                          ┌──────────────────────────────┐
+                          │ Lenis smooth-scroll provider  │
+                          │ + GSAP ScrollTrigger ticker    │
+                          │                                │
+                          │ reduced-motion → no-op pass-   │
+                          │   through (Lenis NEVER instan- │
+                          │   tiated for SR users)         │
+                          └──────────────────────────────┘
+```
+
+**What Plan 6.2 adds (frontend-only):**
+
+- `frontend/components/3d/RiskOrb.tsx` — drei `<Sphere>` + `MeshDistortMaterial` keyed to Plan 5.1 score/level/trajectory
+- `frontend/components/voice/VoiceWaveform.tsx` — Web Audio API, no library; replaces the existing recording-state pill
+- `frontend/components/3d/NeuralNet.tsx` — decorative inference-gap visualizer with explicit "not the actual model graph" disclosure
+- `frontend/components/providers/SmoothScroll.tsx` — Lenis wrapper for `app/(marketing)/layout.tsx` + `app/(admin)/layout.tsx` ONLY
+- `frontend/components/providers/PageTransition.tsx` — GSAP page-mount fade-in for marketing routes only
+
+**What does NOT change:**
+
+- Backend pipeline: zero touch (RiskOrb reads Plan 5.1 risk fields already in production).
+- `/triage/*` routes: native scroll preserved (Lenis explicitly scoped out).
+- Plan 4.0 + 5.1 + 6.1 safety floors: all held.
+- Care-level strings: rendered exact on the RiskOrb label (`Home Care` / `Clinic Visit` / `Emergency Room`).
+- Disclaimer footer: unchanged.
+
+**Tier-acceptance gate:** [checklists/PLAN_6_2_SUBMISSION.md](checklists/PLAN_6_2_SUBMISSION.md) — 32 checks including Lenis-scope contract (`window.lenis` undefined on `/triage` routes) and reduced-motion fallback verification on all 4 primitives.
+
+---
+
+## 0.97 Plan 6.3 architecture — 3D Outbreak Analytics (admin-only, DPDP-audited)
+
+Plan 6.3 ships admin-only outbreak analytics: Mapbox 3D heatmap + Earth-globe spike viz + 100k-particle SymptomCloud. Backend swaps DBSCAN → HDBSCAN to ship per-cluster `cluster_confidence`. **NEVER patient-facing.**
+
+```
+                                Admin user
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │  RBAC gate (interim   │ ← Tier 6.6 wires real Better Auth;
+                          │  header stub Tier 6.3)│   6.3 uses static X-Role: admin header
+                          └──────────┬────────────┘
+                                     │ (admin only)
+                                     ▼
+                          ┌──────────────────────┐
+                          │  /admin/outbreak      │
+                          │  (Next.js admin route)│
+                          │  Tabs: Heatmap·Globe· │
+                          │         Cloud         │
+                          └──────────┬────────────┘
+                                     │
+       ┌─────────────────────────────┼─────────────────────────────┐
+       ▼                             ▼                             ▼
+  ┌─────────────┐         ┌──────────────────┐          ┌──────────────────┐
+  │OutbreakMap3D│         │ OutbreakGlobe    │          │ SymptomCloud      │
+  │             │         │                  │          │                   │
+  │ react-map-  │         │ R3F <Sphere> 2,  │          │ R3F <instancedMesh│
+  │  gl + map-  │         │  64,64 + Earth   │          │  max 100k>         │
+  │  box-gl@3   │         │  daymap_2k.jpg   │          │                   │
+  │ 3D heatmap  │         │  (CC0)           │          │ X = lon offset    │
+  │ pitch 45°   │         │ Per-cluster:     │          │ Y = lat offset    │
+  │ Color stops │         │  cylinderGeom    │          │ Z = score / 10    │
+  │  0..0.5..1  │         │  spike, height = │          │ Color per risk    │
+  │  by density │         │  min(count/10,   │          │  band (RiskOrb    │
+  │             │         │  1.2)            │          │  palette)         │
+  │ Confidence  │         │ Auto-rotate 0.1  │          │                   │
+  │  <0.6 → 30% │         │  rad/s idle      │          │ Fallback: bar     │
+  │  opacity    │         │ Fallback: static │          │  chart by district│
+  │ Fallback:   │         │  2D India map    │          │                   │
+  │  2D chloro- │         └─────────┬────────┘          └─────────┬─────────┘
+  │  pleth      │                   │                              │
+  └──────┬──────┘                   │                              │
+         │ TanStack Query refetch 60s│                              │
+         │                            │                              │
+         ▼                            ▼                              ▼
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │  GET /api/v1/outbreak/clusters/3d (rate-limit 60/min · cache 60s)       │
+  │    → GeoJSON FeatureCollection                                          │
+  │    → properties: {id, count, lat, lon, district, cluster_confidence,    │
+  │                   top_symptom_class}                                    │
+  │    → NEVER: patient_id, session_id, user_id                             │
+  │                                                                          │
+  │  GET /api/v1/analytics/reports?from&to&district                         │
+  │    → [{timestamp, district, risk_band: "LOW|MOD|HIGH|CRIT"}]            │
+  │    → District-level aggregation only (DPDP-honest)                      │
+  │    → NEVER: any patient identifier                                      │
+  └─────────────────────┬──────────────────────────────────────────────────┘
+                        │
+                        ▼
+              ┌──────────────────────┐
+              │ PostGIS sessions table│
+              │   (existing Plan 3.0+)│
+              │ + cluster_confidence  │
+              │   column (Alembic     │
+              │   migration in 6.3)   │
+              └──────────┬────────────┘
+                         │
+                         ▼
+              ┌──────────────────────┐
+              │ ml/outbreak_detector  │
+              │   .py — HDBSCAN swap  │
+              │                        │
+              │ hdbscan.HDBSCAN(       │
+              │  min_cluster_size=15,  │
+              │  min_samples=5,        │
+              │  metric="haversine",   │
+              │  cluster_selection_    │
+              │    epsilon=0.045)      │
+              │                        │
+              │ Outputs:               │
+              │  - cluster_id          │
+              │  - cluster_confidence  │
+              │    (= probabilities_)  │
+              │ Filter: confidence<0.6 │
+              │  → cluster_id=-1       │
+              │  (noise)               │
+              └──────────────────────┘
+```
+
+**DPDP guarantees:**
+
+1. Analytics payloads grep-verified for `patient_id` / `session_id` / `user_id` — zero matches in acceptance gate Stage 4.
+2. Minimum cluster size to expose: ≥ 5 distinct patients (enforced by HDBSCAN `min_cluster_size=15` + `cluster_confidence ≥ 0.6` noise filter).
+3. Audit-trail entry per admin query.
+
+**Tier-acceptance gate:** [checklists/PLAN_6_3_SUBMISSION.md](checklists/PLAN_6_3_SUBMISSION.md) — 33 checks including dedicated DPDP audit stage (4 #28–33).
+
+---
+
+## 0.98 Plan 6.4 architecture — Mobile parity (Android-first, offline-first)
+
+Plan 6.4 ships Expo SDK 52 Android app in a Turborepo monorepo sharing types + API client + UI primitives with the Next.js web app. Offline SQLite + sync queue + on-device LLM via llama.rn. **iOS deferred to post-6.6.**
+
+```
+                         d:\hack (Turborepo root)
+                                    │
+       ┌────────────────────────────┼────────────────────────────┐
+       ▼                            ▼                            ▼
+  apps/web/               apps/mobile/                   packages/
+  (Next.js 14)            (Expo SDK 52,                  ┌──────────┐
+  unchanged from          Android-first)                 │ ui/      │ ← shadcn + RiskOrb-RN
+  Plan 6.3                                                │ types/   │ ← Pin v1.5 + Verdict + RiskAssessment
+                              │                          │ api-     │ ← framework-agnostic axios + TanStack
+                              │                          │  client/ │
+                              ▼                          │ utils/   │ ← zod schemas, red-flag rules
+                  ┌──────────────────────┐               └──────────┘
+                  │ apps/mobile/app/      │
+                  │  (Expo Router)        │
+                  │  (tabs)/triage.tsx    │ ← chat + voice + body-map entry
+                  │  (tabs)/history.tsx   │ ← past sessions + sync status
+                  │  (tabs)/verdict/      │ ← RiskOrb (RN-compatible variant)
+                  │   [sessionId].tsx     │
+                  │  _layout.tsx          │ ← disclaimer footer on every screen
+                  └──────────┬───────────┘
+                             │
+       ┌─────────────────────┼─────────────────────┐
+       ▼                     ▼                     ▼
+  ┌─────────────┐  ┌──────────────────┐  ┌──────────────────┐
+  │ apps/mobile/│  │ apps/mobile/      │  │ apps/mobile/      │
+  │  offline/   │  │  inference/llm.ts │  │  notifications/   │
+  │  db.ts      │  │                    │  │   fcm.ts          │
+  │ expo-sqlite │  │ llama.rn wrapper   │  │ expo-notifications│
+  │             │  │ + gemma2:2b GGUF   │  │ Channel:          │
+  │ sessions    │  │   Q4_K_M (≤1.6GB)  │  │  risk-escalation  │
+  │ emergency_  │  │ Downloaded on      │  │ Receives Ably →   │
+  │  rules      │  │   first-launch     │  │  FCM webhook for  │
+  │ care_strings│  │   consent          │  │  CRITICAL risk    │
+  │ (EN exact)  │  │                    │  │  (extends Plan    │
+  │             │  │ ALWAYS run red-    │  │   5.1 escalation) │
+  │ Sync queue: │  │  flag rules FIRST  │  │                   │
+  │  synced=0|1 │  │  (from @asha/utils)│  │ Tap notification  │
+  │ NetInfo →   │  │  → LLM only when   │  │  → /verdict/[id]  │
+  │  drain on   │  │  rules don't       │  │                   │
+  │  resume     │  │  decide            │  │                   │
+  │             │  │                    │  │                   │
+  │ Encrypted   │  │ Cloud-first when   │  │                   │
+  │  at rest    │  │  online; on-device │  │                   │
+  │ (Expo per-  │  │  when offline      │  │                   │
+  │  app        │  │                    │  │                   │
+  │  sandbox)   │  │                    │  │                   │
+  └──────┬──────┘  └──────────┬─────────┘  └─────────┬─────────┘
+         │                    │                       │
+         │                    │                       │ FCM tap
+         ▼                    ▼                       ▼
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Backend new endpoints (Phase B):                             │
+  │  POST /api/v1/sync/sessions  (idempotent · 10/min · ack list) │
+  │  GET  /api/v1/models/edge-manifest  (gguf URL + sha256 +     │
+  │                                       size_mb · regions YAML)│
+  │  Ably webhook bridge → publishes risk:<patient_id> CRITICAL  │
+  │                         → FCM via Meta Cloud webhook OR       │
+  │                            firebase-admin SDK                 │
+  └──────────────────────────────────────────────────────────────┘
+
+      Device class gating (apps/mobile/inference/device-class.ts):
+        · Adreno 730+ / Mali-G715+ → full BodyMap3D LOD1
+        · Adreno 618 / Mali-G57    → LOD2 BodyMap3D; layers disabled
+        · Adreno 612 / Mali-G52    → LOD2; auto-rotate disabled
+        · Below                    → v1 SVG body-map ONLY
+```
+
+**DPDP + consent flow** (Tier 6.6 Phase B wires the audit trail; Tier 6.4 ships the consent screen):
+
+- First-launch consent screen renders before any data write.
+- Copy at [MOBILE_CONSENT.md](MOBILE_CONSENT.md) — EN canonical + HI/KN pending native QA.
+- Right-to-delete endpoint hits server + local DB tombstone.
+- Audit trail server-side once any sync happens.
+
+**What does NOT change:**
+
+- Care-level strings rendered exact in mobile verdict UI + SQLite `care_strings` table.
+- 9 red-flag rules deterministic — same Python logic ported to TS in `@asha/utils`.
+- Plan 4.0 + 5.x + 6.1 + 6.2 + 6.3 safety floors all held.
+- Disclaimer on every mobile screen.
+
+**Tier-acceptance gate:** [checklists/PLAN_6_4_SUBMISSION.md](checklists/PLAN_6_4_SUBMISSION.md) — 39 checks including Turborepo build (`npx turbo build` all green), APK size ≤ 80 MB, on-device LLM red-flag-first verification.
+
+---
+
 ## 1. High-level architecture (Plan 4.0+ target state)
 
 ```

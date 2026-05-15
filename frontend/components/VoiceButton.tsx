@@ -20,6 +20,7 @@ import { Mic, Square, Loader2 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/I18nProvider';
 import { voiceTranscribe } from '@/lib/api';
 import { getSupabase } from '@/lib/supabase';
+import { VoiceWaveform } from './voice/VoiceWaveform';
 
 const BHASHINI_ENABLED =
   typeof process !== 'undefined' &&
@@ -194,22 +195,32 @@ export function VoiceButton({ onTranscript, disabled }: VoiceButtonProps) {
   const label = recording ? t('triage.stopVoice') : t('triage.startVoice');
 
   return (
-    <button
-      type="button"
-      onClick={recording ? stop : start}
-      disabled={disabled || busy}
-      className={
-        'h-10 w-10 rounded-full inline-flex items-center justify-center transition-colors ' +
-        (recording
-          ? 'bg-red-500 text-white animate-pulse'
-          : 'bg-slate-800 text-slate-200 hover:bg-slate-700') +
-        ' disabled:opacity-40 disabled:cursor-not-allowed'
-      }
-      title={label}
-      aria-label={label}
-      aria-pressed={recording}
-    >
-      <Icon className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} aria-hidden />
-    </button>
+    <div className="relative inline-block">
+      {/* Plan 6.2 — VoiceWaveform popover anchored above the mic button.
+          Renders only while recording AND only when reduced-motion is off
+          (the component itself short-circuits to a recording pill if not). */}
+      {recording && (
+        <div className="absolute bottom-full right-0 mb-2 w-56 sm:w-64">
+          <VoiceWaveform isRecording={recording} height={56} />
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={recording ? stop : start}
+        disabled={disabled || busy}
+        className={
+          'h-10 w-10 rounded-full inline-flex items-center justify-center transition-colors ' +
+          (recording
+            ? 'bg-red-500 text-white animate-pulse'
+            : 'bg-slate-800 text-slate-200 hover:bg-slate-700') +
+          ' disabled:opacity-40 disabled:cursor-not-allowed'
+        }
+        title={label}
+        aria-label={label}
+        aria-pressed={recording}
+      >
+        <Icon className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} aria-hidden />
+      </button>
+    </div>
   );
 }

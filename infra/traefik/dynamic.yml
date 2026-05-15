@@ -1,0 +1,60 @@
+# Traefik dynamic config (mounted into ashaai-traefik at /etc/traefik/dynamic/).
+# Hot-reloaded — changes take effect without container restart.
+
+http:
+  middlewares:
+    # Security headers applied to every public route.
+    security-headers:
+      headers:
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        # HSTS — 1 year, include sub-domains, preload-ready.
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        # Content-Security-Policy — start strict; loosen per-route if needed.
+        contentSecurityPolicy: >-
+          default-src 'self';
+          script-src 'self';
+          style-src 'self' 'unsafe-inline';
+          img-src 'self' data: https:;
+          connect-src 'self' https://*.asha-ai.in wss://*.asha-ai.in;
+          frame-ancestors 'none';
+          base-uri 'self';
+          form-action 'self';
+        # Permissions-Policy — disable everything by default.
+        customResponseHeaders:
+          Permissions-Policy: "camera=(self), microphone=(self), geolocation=(), payment=()"
+          X-Robots-Tag: "noindex, nofollow"
+
+    # Rate-limit ingress at the edge — protects the backend's slowapi limiter.
+    api-rate-limit:
+      rateLimit:
+        average: 100      # 100 req/sec average
+        burst: 200        # 200 req short burst
+        period: 1s
+
+    # /api endpoints — strict rate limit, no caching.
+    api-strict:
+      chain:
+        middlewares:
+          - security-headers
+          - api-rate-limit
+
+  routers:
+    # NB: most routers are container-label-driven (see docker-compose.prod.yml).
+    # This file is for ad-hoc routes that don't map to a single container.
+
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      cipherSuites:
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305

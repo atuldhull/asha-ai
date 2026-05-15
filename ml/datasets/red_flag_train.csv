@@ -1,0 +1,94 @@
+text,label,category,source
+"cannot touch my chin to my chest, fever, light hurts my eyes",1,meningitis,seed
+"mild ear discomfort, no discharge, no fever",0,routine,seed
+"face puffed up, throat tight, dizzy and nauseous",1,anaphylaxis,seed
+"head injury, briefly unconscious, vomiting now",1,trauma,seed
+"very light spotting between periods, no pain",0,routine,seed
+mild dizziness when standing up too fast,0,routine,seed
+"small pimples on face, no pain, no fever",0,routine,seed
+blood in stool with severe cramping and dizziness,1,gi_emergency,seed
+"road accident, deep cut bleeding heavily, very pale",1,trauma,seed
+"infant burning hot, vomiting everything, sunken eyes and dry lips",1,pediatric_critical,seed
+high fever with mottled skin and not making sense when talking,1,sepsis,seed
+the worst headache of my life came on like thunder,1,stroke,seed
+"infant not breathing, lips blue, body limp",1,pediatric_critical,seed
+"dry cough for a week, no fever, no breathing difficulty",0,routine,seed
+"minor abrasion on knee from a fall, cleaned and dressed",0,routine,seed
+"occasional toothache, dentist appointment booked",0,routine,seed
+"occasional bad breath, brushing twice daily",0,routine,seed
+"very mild itching on scalp, suspect hair-care product",0,routine,seed
+mild rash on neck from new metal chain,0,routine,seed
+stomach ache after eating spicy food last night,0,routine,seed
+occasional indigestion after large meals,0,routine,seed
+"sore throat for two days, no fever, can swallow okay",0,routine,seed
+"vomited a large amount of bright red blood, dizzy and weak",1,gi_emergency,seed
+"tight band around chest, can't catch breath, very sweaty",1,cardiac_acs,seed
+"toddler unresponsive, eyes rolled back, not breathing properly",1,pediatric_critical,seed
+minor skin redness from new sunscreen,0,routine,seed
+"fell from rooftop, severe back pain, cannot move legs",1,trauma,seed
+"pulled hamstring last week, healing slowly",0,routine,seed
+feeling tired and run down for a few days,0,routine,seed
+high fever with shaking chills and feeling completely confused,1,sepsis,seed
+"mild fever 99 degrees, feeling tired but eating normally",0,routine,seed
+"intermittent mild ringing in one ear, hearing normal",0,routine,seed
+"feels like an elephant sitting on my chest, sweating profusely",1,cardiac_acs,seed
+"mild anxiety before exam, sleeping okay",0,routine,seed
+right arm went numb and I cannot smile properly,1,stroke,seed
+mild ankle swelling at end of long workday,0,routine,seed
+occasional acid reflux after meals,0,routine,seed
+central chest pressure spreading to my jaw and left shoulder,1,cardiac_acs,seed
+occasional headache when working long hours at computer,0,routine,seed
+"I want to die, please help me, I have no other option",1,suicidal_ideation,seed
+"feels like dying, fever for two days, very confused",1,sepsis,seed
+"very faint cough, no fever, normal energy",0,routine,seed
+"fever and confused, cold hands and feet, lips a bit blue",1,sepsis,seed
+back pain after lifting something heavy yesterday,0,routine,seed
+shoulder pain from sleeping in awkward position,0,routine,seed
+minor headache after long phone call,0,routine,seed
+"drowning rescue, unconscious, breathing irregularly",1,trauma,seed
+"mild eye irritation from dust, no vision change",0,routine,seed
+tongue swelling and trouble breathing after taking the medicine,1,anaphylaxis,seed
+occasional mild migraine triggered by skipped meal,0,routine,seed
+"throwing up blood, very pale, heart pounding",1,gi_emergency,seed
+child fever stiff neck and rash all over chest,1,meningitis,seed
+"thinking of killing myself, do not want to be here anymore",1,suicidal_ideation,seed
+"lost vision in one eye suddenly, room is spinning",1,stroke,seed
+muscle soreness after gym workout yesterday,0,routine,seed
+"abdomen is rigid like a board, cannot bear to be touched",1,gi_emergency,seed
+"newborn not waking up, very floppy, blue around mouth",1,pediatric_critical,seed
+"mild morning sneezing, suspect allergies",0,routine,seed
+lower back stiffness after long drive,0,routine,seed
+mild gas and bloating after dinner,0,routine,seed
+"electric shock, burned palm, irregular heart beat",1,trauma,seed
+occasional gentle ringing in ears in quiet rooms,0,routine,seed
+"mild headache for a few hours, took paracetamol, feeling slightly better",0,routine,seed
+"I want to end my life, I have a plan, I cannot go on",1,suicidal_ideation,seed
+small bruise on arm from bumping into door,0,routine,seed
+"hives all over, wheezing, feel like I might pass out",1,anaphylaxis,seed
+heavy weight on chest with pain down both arms,1,cardiac_acs,seed
+"sudden weakness on one side of body, face drooping, slurred speech",1,stroke,seed
+mild forearm soreness from carrying groceries,0,routine,seed
+"itchy rash on forearm, no pain, no spread",0,routine,seed
+high fever with stiff neck and bright red rash spreading,1,meningitis,seed
+occasional joint stiffness in fingers in the morning,0,routine,seed
+"fever, neck pain, sensitivity to light, drowsy",1,meningitis,seed
+"throat is closing, cannot swallow, lips swelling rapidly",1,anaphylaxis,seed
+slight cough with clear phlegm in the morning,0,routine,seed
+occasional acid taste in throat after meals,0,routine,seed
+"knee pain when climbing stairs, gradual over months",0,routine,seed
+"stuffy nose and sneezing, started yesterday, no other symptoms",0,routine,seed
+"constipation for three days, no severe pain",0,routine,seed
+"stiff neck, headache, rash that does not fade when pressed",1,meningitis,seed
+child had a seizure that lasted more than five minutes,1,pediatric_critical,seed
+"very tired today, slept poorly last night",0,routine,seed
+"burning skin temperature, shivering uncontrollably, drowsy",1,sepsis,seed
+"stomach swollen, hard, severe pain, cannot pass gas",1,gi_emergency,seed
+"mild cramps during period, manageable with ibuprofen",0,routine,seed
+"voice gone hoarse, hard to swallow, blood pressure dropping",1,anaphylaxis,seed
+stabbing chest pain plus nausea and cold clammy skin,1,cardiac_acs,seed
+suddenly cannot understand what people are saying to me,1,stroke,seed
+mild sore on inner cheek from biting it,0,routine,seed
+"minor sunburn on shoulders, peeling slightly",0,routine,seed
+"mild seasonal allergy, sneezing and watery eyes",0,routine,seed
+"have the pills ready, going to take them all tonight",1,suicidal_ideation,seed
+"going to harm myself today, no point continuing",1,suicidal_ideation,seed

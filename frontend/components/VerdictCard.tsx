@@ -1,12 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Home, Stethoscope, Siren, BookOpen, ChevronDown } from 'lucide-react';
+import { Home, Stethoscope, Siren, BookOpen, ChevronDown, Sparkles } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { CareLevel, TriageResponse } from '@/lib/types';
 import { cn } from '@/lib/cn';
 import { useTranslation } from '@/lib/i18n/I18nProvider';
 import { playVerdictCue } from '@/lib/audio';
+import { canSimplify, toPlainEnglish } from '@/lib/plain-diagnosis';
+import { RiskTrajectoryCard } from './RiskTrajectoryCard';
+import { VerdictActions } from './VerdictActions';
+
+// Plan 6.2 — RiskOrb is lazily loaded so the R3F + drei bundle (~225 KB)
+// doesn't ship to chat-only routes. Loaded only when a verdict's `risk`
+// field is present, which means the user has gone through the triage flow.
+// SSR is off because R3F requires browser-only WebGL APIs.
+const RiskOrb = dynamic(
+  () => import('./3d/RiskOrb').then((m) => ({ default: m.RiskOrb })),
+  { ssr: false, loading: () => null },
+);
 
 interface VerdictCardProps {
   verdict: TriageResponse;
@@ -66,8 +79,19 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
   const reduce = useReducedMotion();
   const { t, locale } = useTranslation();
   const [showSources, setShowSources] = useState(false);
+  const [plainMode, setPlainMode] = useState(false);
 
   const subtitle = locale !== 'en' ? t(SUBTITLE_KEY[verdict.level]) : null;
+
+  // Plan 7.x — Plain Diagnosis layer (frontend-first). Substitutes ~70 medical
+  // jargon terms with plain English. Disabled when the reasoning isn't English
+  // (Devanagari / Kannada detected). Never touches care-level strings, "108",
+  // ICD/FMA codes, or the disclaimer.
+  const simplifyAvailable = canSimplify(verdict.reasoning);
+  const displayReasoning = useMemo(
+    () => (plainMode && simplifyAvailable ? toPlainEnglish(verdict.reasoning) : verdict.reasoning),
+    [plainMode, simplifyAvailable, verdict.reasoning],
+  );
 
   // Plan 4.0 — fire audio cue + haptic on first mount of a verdict.
   // Honors user's mute preference + prefers-reduced-motion (handled inside playVerdictCue).
@@ -132,6 +156,14 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
                 Time-critical
               </span>
             )}
+            {verdict.risk_escalated && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300"
+                title="Risk score escalated this verdict to a higher care level. The reverse never happens — risk can only escalate, never downgrade."
+              >
+                ↑ escalated by risk
+              </span>
+            )}
           </div>
 
           <h3 className={cn('mt-3 text-lg font-bold', c.text)}>{c.label}</h3>
@@ -141,9 +173,28 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
             </p>
           )}
 
-          <p className="mt-2 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-            {verdict.reasoning}
-          </p>
+          <div className="mt-2 flex items-start gap-2">
+            <p className="flex-1 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+              {displayReasoning}
+            </p>
+            {simplifyAvailable && (
+              <button
+                type="button"
+                onClick={() => setPlainMode((v) => !v)}
+                aria-pressed={plainMode}
+                title={plainMode ? t('plainDiagnosis.toggleOff') : t('plainDiagnosis.toggleOn')}
+                className={cn(
+                  'flex-shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
+                  plainMode
+                    ? 'border-amber-500/50 bg-amber-500/10 text-amber-300'
+                    : 'border-slate-600 bg-slate-900/40 text-slate-400 hover:border-slate-500 hover:text-slate-200',
+                )}
+              >
+                <Sparkles className="h-3 w-3" aria-hidden />
+                <span>{plainMode ? t('plainDiagnosis.on') : t('plainDiagnosis.off')}</span>
+              </button>
+            )}
+          </div>
 
           <div className="mt-4 rounded-lg bg-white/70 dark:bg-slate-900/40 p-3 border border-slate-200/60 dark:border-slate-700/60">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -152,6 +203,10 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
             <p className="mt-1 text-sm text-slate-700 dark:text-slate-200">
               {c.nextStep}
             </p>
+            {/* Plan 6.6 Phase H (frontend-only first pass) — quick actions:
+                Find nearest clinic via Google Maps deep link · share verdict
+                via WhatsApp / native share. No API keys needed. */}
+            <VerdictActions verdict={verdict} />
           </div>
 
           {verdict.red_flags && verdict.red_flags.length > 0 && (
@@ -230,6 +285,25 @@ export function VerdictCard({ verdict }: VerdictCardProps) {
                   })}
                 </ul>
               )}
+            </div>
+          )}
+
+          {verdict.risk && (
+            <div className="mt-4 space-y-3">
+              {/* Plan 6.2 — RiskOrb as the headline (replaces the
+                  RiskTrajectoryCard sparkline as the primary visual).
+                  RiskTrajectoryCard demotes to a data-rich secondary view
+                  per FRONTEND_BLUEPRINT §3.2. */}
+              <div className="flex justify-center">
+                <RiskOrb
+                  score={verdict.risk.score}
+                  level={verdict.risk.level}
+                  trajectory={verdict.risk.trajectory}
+                  careLevel={verdict.level}
+                  redFlagFired={(verdict.red_flags?.length ?? 0) > 0}
+                />
+              </div>
+              <RiskTrajectoryCard risk={verdict.risk} />
             </div>
           )}
 

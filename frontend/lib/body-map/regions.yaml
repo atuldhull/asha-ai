@@ -1,0 +1,629 @@
+version: '1.5'
+count: 69
+regions_by_view:
+  front:
+  - id: head_front
+    mesh_name: r-head-front
+    view: front
+    layer: skin
+    fma_id: FMA:7154
+    clinical_term: Anterior head
+    layperson_en: Front of head
+    layperson_hi: सिर का अगला भाग
+    layperson_kn: ತಲೆಯ ಮುಂಭಾಗ
+  - id: face
+    mesh_name: r-face
+    view: front
+    layer: skin
+    fma_id: FMA:24728
+    clinical_term: Face
+    layperson_en: Face
+    layperson_hi: चेहरा
+    layperson_kn: ಮುಖ
+  - id: neck_front
+    mesh_name: r-neck-front
+    view: front
+    layer: skin
+    fma_id: FMA:7155
+    clinical_term: Anterior neck
+    layperson_en: Front of neck
+    layperson_hi: गर्दन का अगला भाग
+    layperson_kn: ಕುತ್ತಿಗೆಯ ಮುಂಭಾಗ
+  - id: shoulder_left
+    mesh_name: r-shoulder-l
+    view: front
+    layer: skin
+    fma_id: FMA:24834
+    clinical_term: Left shoulder
+    layperson_en: Left shoulder
+    layperson_hi: बायाँ कंधा
+    layperson_kn: ಎಡ ಭುಜ
+  - id: shoulder_right
+    mesh_name: r-shoulder-r
+    view: front
+    layer: skin
+    fma_id: FMA:24835
+    clinical_term: Right shoulder
+    layperson_en: Right shoulder
+    layperson_hi: दायाँ कंधा
+    layperson_kn: ಬಲ ಭುಜ
+  - id: chest_left_anterior
+    mesh_name: r-chest-left
+    view: front
+    layer: skin
+    fma_id: FMA:43799
+    clinical_term: Left anterior chest
+    layperson_en: Left side of chest
+    layperson_hi: बायीं ओर का सीना
+    layperson_kn: ಎಡ ಎದೆ
+    icd11_anatomy: XA1L74
+  - id: chest_right_anterior
+    mesh_name: r-chest-right
+    view: front
+    layer: skin
+    fma_id: FMA:43800
+    clinical_term: Right anterior chest
+    layperson_en: Right side of chest
+    layperson_hi: दायीं ओर का सीना
+    layperson_kn: ಬಲ ಎದೆ
+    icd11_anatomy: XA1L74
+  - id: sternum
+    mesh_name: r-sternum
+    view: front
+    layer: skin
+    fma_id: FMA:7485
+    clinical_term: Sternum / centre of chest
+    layperson_en: Centre of chest
+    layperson_hi: सीने के बीच
+    layperson_kn: ಎದೆಯ ಮಧ್ಯ
+  - id: upper_abdomen_left
+    mesh_name: r-upper-abdomen-left
+    view: front
+    layer: skin
+    fma_id: FMA:14593
+    clinical_term: Left upper quadrant
+    layperson_en: Upper-left belly
+    layperson_hi: पेट का ऊपरी बायाँ भाग
+    layperson_kn: ಹೊಟ್ಟೆಯ ಮೇಲಿನ ಎಡ ಭಾಗ
+  - id: upper_abdomen_right
+    mesh_name: r-upper-abdomen-right
+    view: front
+    layer: skin
+    fma_id: FMA:14594
+    clinical_term: Right upper quadrant
+    layperson_en: Upper-right belly
+    layperson_hi: पेट का ऊपरी दायाँ भाग
+    layperson_kn: ಹೊಟ್ಟೆಯ ಮೇಲಿನ ಬಲ ಭಾಗ
+  - id: epigastrium
+    mesh_name: r-epigastrium
+    view: front
+    layer: skin
+    fma_id: FMA:14593
+    clinical_term: Epigastrium
+    layperson_en: Upper-centre belly
+    layperson_hi: पेट के ऊपर बीच
+    layperson_kn: ಹೊಟ್ಟೆಯ ಮೇಲಿನ ಮಧ್ಯ
+  - id: lower_abdomen_left
+    mesh_name: r-lower-abdomen-left
+    view: front
+    layer: skin
+    fma_id: FMA:14595
+    clinical_term: Left lower quadrant
+    layperson_en: Lower-left belly
+    layperson_hi: पेट का निचला बायाँ भाग
+    layperson_kn: ಹೊಟ್ಟೆಯ ಕೆಳಗಿನ ಎಡ ಭಾಗ
+  - id: lower_abdomen_right
+    mesh_name: r-lower-abdomen-right
+    view: front
+    layer: skin
+    fma_id: FMA:14596
+    clinical_term: Right lower quadrant
+    layperson_en: Lower-right belly
+    layperson_hi: पेट का निचला दायाँ भाग
+    layperson_kn: ಹೊಟ್ಟೆಯ ಕೆಳಗಿನ ಬಲ ಭಾಗ
+  - id: suprapubic
+    mesh_name: r-suprapubic
+    view: front
+    layer: skin
+    fma_id: FMA:9577
+    clinical_term: Suprapubic region
+    layperson_en: Just above pubic bone
+    layperson_hi: पेट के सबसे निचले बीच
+    layperson_kn: ಶ್ರೋಣಿಯ ಮೇಲೆ
+  - id: pelvis
+    mesh_name: r-pelvis
+    view: front
+    layer: skin
+    fma_id: FMA:9578
+    clinical_term: Pelvis
+    layperson_en: Hip / pelvis
+    layperson_hi: कमर / श्रोणि
+    layperson_kn: ಸೊಂಟ
+  - id: groin
+    mesh_name: r-groin
+    view: front
+    layer: skin
+    fma_id: FMA:24982
+    clinical_term: Groin
+    layperson_en: Groin
+    layperson_hi: जाँघ का जोड़
+    layperson_kn: ತೊಡೆಸಂದು
+  - id: upper_arm_left
+    mesh_name: r-upper-arm-l
+    view: front
+    layer: skin
+    fma_id: FMA:24890
+    clinical_term: Left upper arm
+    layperson_en: Left upper arm
+    layperson_hi: बायीं भुजा
+    layperson_kn: ಎಡ ಮೇಲಿನ ತೋಳು
+  - id: upper_arm_right
+    mesh_name: r-upper-arm-r
+    view: front
+    layer: skin
+    fma_id: FMA:24891
+    clinical_term: Right upper arm
+    layperson_en: Right upper arm
+    layperson_hi: दायीं भुजा
+    layperson_kn: ಬಲ ಮೇಲಿನ ತೋಳು
+  - id: elbow_left
+    mesh_name: r-elbow-l
+    view: front
+    layer: skin
+    fma_id: FMA:24901
+    clinical_term: Left elbow
+    layperson_en: Left elbow
+    layperson_hi: बायीं कोहनी
+    layperson_kn: ಎಡ ಮೊಣಕೈ
+  - id: elbow_right
+    mesh_name: r-elbow-r
+    view: front
+    layer: skin
+    fma_id: FMA:24902
+    clinical_term: Right elbow
+    layperson_en: Right elbow
+    layperson_hi: दायीं कोहनी
+    layperson_kn: ಬಲ ಮೊಣಕೈ
+  - id: forearm_left
+    mesh_name: r-forearm-l
+    view: front
+    layer: skin
+    fma_id: FMA:24913
+    clinical_term: Left forearm
+    layperson_en: Left forearm
+    layperson_hi: बायीं बाँह
+    layperson_kn: ಎಡ ಮುಂದೋಳು
+  - id: forearm_right
+    mesh_name: r-forearm-r
+    view: front
+    layer: skin
+    fma_id: FMA:24914
+    clinical_term: Right forearm
+    layperson_en: Right forearm
+    layperson_hi: दायीं बाँह
+    layperson_kn: ಬಲ ಮುಂದೋಳು
+  - id: wrist_left
+    mesh_name: r-wrist-l
+    view: front
+    layer: skin
+    fma_id: FMA:24922
+    clinical_term: Left wrist
+    layperson_en: Left wrist
+    layperson_hi: बायीं कलाई
+    layperson_kn: ಎಡ ಮಣಿಕಟ್ಟು
+  - id: wrist_right
+    mesh_name: r-wrist-r
+    view: front
+    layer: skin
+    fma_id: FMA:24923
+    clinical_term: Right wrist
+    layperson_en: Right wrist
+    layperson_hi: दायीं कलाई
+    layperson_kn: ಬಲ ಮಣಿಕಟ್ಟು
+  - id: hand_left
+    mesh_name: r-hand-l
+    view: front
+    layer: skin
+    fma_id: FMA:9712
+    clinical_term: Left hand
+    layperson_en: Left hand
+    layperson_hi: बायाँ हाथ
+    layperson_kn: ಎಡ ಕೈ
+  - id: hand_right
+    mesh_name: r-hand-r
+    view: front
+    layer: skin
+    fma_id: FMA:9713
+    clinical_term: Right hand
+    layperson_en: Right hand
+    layperson_hi: दायाँ हाथ
+    layperson_kn: ಬಲ ಕೈ
+  - id: thigh_left
+    mesh_name: r-thigh-l
+    view: front
+    layer: skin
+    fma_id: FMA:24967
+    clinical_term: Left thigh
+    layperson_en: Left thigh
+    layperson_hi: बायीं जाँघ
+    layperson_kn: ಎಡ ತೊಡೆ
+  - id: thigh_right
+    mesh_name: r-thigh-r
+    view: front
+    layer: skin
+    fma_id: FMA:24968
+    clinical_term: Right thigh
+    layperson_en: Right thigh
+    layperson_hi: दायीं जाँघ
+    layperson_kn: ಬಲ ತೊಡೆ
+  - id: knee_left
+    mesh_name: r-knee-l
+    view: front
+    layer: skin
+    fma_id: FMA:24974
+    clinical_term: Left knee
+    layperson_en: Left knee
+    layperson_hi: बायाँ घुटना
+    layperson_kn: ಎಡ ಮೊಣಕಾಲು
+  - id: knee_right
+    mesh_name: r-knee-r
+    view: front
+    layer: skin
+    fma_id: FMA:24975
+    clinical_term: Right knee
+    layperson_en: Right knee
+    layperson_hi: दायाँ घुटना
+    layperson_kn: ಬಲ ಮೊಣಕಾಲು
+  - id: calf_left
+    mesh_name: r-calf-l
+    view: front
+    layer: skin
+    fma_id: FMA:24986
+    clinical_term: Left calf
+    layperson_en: Left calf
+    layperson_hi: बायीं पिंडली
+    layperson_kn: ಎಡ ಪಾದದ ಹಿಂಭಾಗ
+  - id: calf_right
+    mesh_name: r-calf-r
+    view: front
+    layer: skin
+    fma_id: FMA:24987
+    clinical_term: Right calf
+    layperson_en: Right calf
+    layperson_hi: दायीं पिंडली
+    layperson_kn: ಬಲ ಪಾದದ ಹಿಂಭಾಗ
+  - id: ankle_left
+    mesh_name: r-ankle-l
+    view: front
+    layer: skin
+    fma_id: FMA:24993
+    clinical_term: Left ankle
+    layperson_en: Left ankle
+    layperson_hi: बायीं टखना
+    layperson_kn: ಎಡ ಕಣಕಾಲು
+  - id: ankle_right
+    mesh_name: r-ankle-r
+    view: front
+    layer: skin
+    fma_id: FMA:24994
+    clinical_term: Right ankle
+    layperson_en: Right ankle
+    layperson_hi: दायीं टखना
+    layperson_kn: ಬಲ ಕಣಕಾಲು
+  - id: foot_left
+    mesh_name: r-foot-l
+    view: front
+    layer: skin
+    fma_id: FMA:9663
+    clinical_term: Left foot
+    layperson_en: Left foot
+    layperson_hi: बायाँ पैर
+    layperson_kn: ಎಡ ಪಾದ
+  - id: foot_right
+    mesh_name: r-foot-r
+    view: front
+    layer: skin
+    fma_id: FMA:9664
+    clinical_term: Right foot
+    layperson_en: Right foot
+    layperson_hi: दायाँ पैर
+    layperson_kn: ಬಲ ಪಾದ
+  back:
+  - id: head_back
+    mesh_name: r-head-back
+    view: back
+    layer: skin
+    fma_id: FMA:7156
+    clinical_term: Posterior head / occiput
+    layperson_en: Back of head
+    layperson_hi: सिर का पिछला भाग
+    layperson_kn: ತಲೆಯ ಹಿಂಭಾಗ
+  - id: neck_back
+    mesh_name: r-neck-back
+    view: back
+    layer: skin
+    fma_id: FMA:7157
+    clinical_term: Posterior neck / nuchal region
+    layperson_en: Back of neck
+    layperson_hi: गर्दन का पिछला भाग
+    layperson_kn: ಕುತ್ತಿಗೆಯ ಹಿಂಭಾಗ
+  - id: upper_back_left
+    mesh_name: r-upper-back-l
+    view: back
+    layer: skin
+    fma_id: FMA:14077
+    clinical_term: Left upper back
+    layperson_en: Left upper back
+    layperson_hi: पीठ का ऊपरी बायाँ भाग
+    layperson_kn: ಬೆನ್ನಿನ ಮೇಲಿನ ಎಡ ಭಾಗ
+  - id: upper_back_right
+    mesh_name: r-upper-back-r
+    view: back
+    layer: skin
+    fma_id: FMA:14078
+    clinical_term: Right upper back
+    layperson_en: Right upper back
+    layperson_hi: पीठ का ऊपरी दायाँ भाग
+    layperson_kn: ಬೆನ್ನಿನ ಮೇಲಿನ ಬಲ ಭಾಗ
+  - id: mid_back
+    mesh_name: r-mid-back
+    view: back
+    layer: skin
+    fma_id: FMA:14079
+    clinical_term: Mid-back / thoracic
+    layperson_en: Middle of back
+    layperson_hi: पीठ के बीच
+    layperson_kn: ಬೆನ್ನಿನ ಮಧ್ಯ
+  - id: lower_back
+    mesh_name: r-lower-back
+    view: back
+    layer: skin
+    fma_id: FMA:14080
+    clinical_term: Lumbar / lower back
+    layperson_en: Lower back
+    layperson_hi: पीठ का निचला भाग
+    layperson_kn: ಬೆನ್ನಿನ ಕೆಳಭಾಗ
+  - id: buttocks_left
+    mesh_name: r-buttocks-l
+    view: back
+    layer: skin
+    fma_id: FMA:24946
+    clinical_term: Left buttock
+    layperson_en: Left buttock
+    layperson_hi: बायाँ नितंब
+    layperson_kn: ಎಡ ಪೃಷ್ಠ
+  - id: buttocks_right
+    mesh_name: r-buttocks-r
+    view: back
+    layer: skin
+    fma_id: FMA:24947
+    clinical_term: Right buttock
+    layperson_en: Right buttock
+    layperson_hi: दायाँ नितंब
+    layperson_kn: ಬಲ ಪೃಷ್ಠ
+  - id: back_thigh_left
+    mesh_name: r-back-thigh-l
+    view: back
+    layer: skin
+    fma_id: FMA:24967
+    clinical_term: Posterior left thigh
+    layperson_en: Back of left thigh
+    layperson_hi: बायीं जाँघ का पिछला भाग
+    layperson_kn: ಎಡ ತೊಡೆಯ ಹಿಂಭಾಗ
+  - id: back_thigh_right
+    mesh_name: r-back-thigh-r
+    view: back
+    layer: skin
+    fma_id: FMA:24968
+    clinical_term: Posterior right thigh
+    layperson_en: Back of right thigh
+    layperson_hi: दायीं जाँघ का पिछला भाग
+    layperson_kn: ಬಲ ತೊಡೆಯ ಹಿಂಭಾಗ
+  - id: calf_back_left
+    mesh_name: r-calf-back-l
+    view: back
+    layer: skin
+    fma_id: FMA:24986
+    clinical_term: Posterior left calf
+    layperson_en: Back of left calf
+    layperson_hi: बायीं पिंडली का पिछला भाग
+    layperson_kn: ಎಡ ಪಾದದ ಹಿಂಭಾಗ
+  - id: calf_back_right
+    mesh_name: r-calf-back-r
+    view: back
+    layer: skin
+    fma_id: FMA:24987
+    clinical_term: Posterior right calf
+    layperson_en: Back of right calf
+    layperson_hi: दायीं पिंडली का पिछला भाग
+    layperson_kn: ಬಲ ಪಾದದ ಹಿಂಭಾಗ
+  - id: heel_left
+    mesh_name: r-heel-l
+    view: back
+    layer: skin
+    fma_id: FMA:38542
+    clinical_term: Left heel
+    layperson_en: Left heel
+    layperson_hi: बायीं एड़ी
+    layperson_kn: ಎಡ ಹಿಮ್ಮಡಿ
+  - id: heel_right
+    mesh_name: r-heel-r
+    view: back
+    layer: skin
+    fma_id: FMA:38543
+    clinical_term: Right heel
+    layperson_en: Right heel
+    layperson_hi: दायीं एड़ी
+    layperson_kn: ಬಲ ಹಿಮ್ಮಡಿ
+  interior:
+  - id: organ_heart
+    mesh_name: r-organ-heart
+    view: interior
+    layer: organs
+    fma_id: FMA:7088
+    clinical_term: Heart
+    layperson_en: Heart
+    layperson_hi: दिल
+    layperson_kn: ಹೃದಯ
+  - id: organ_lung_left
+    mesh_name: r-organ-lung-left
+    view: interior
+    layer: organs
+    fma_id: FMA:7310
+    clinical_term: Left lung
+    layperson_en: Left lung
+    layperson_hi: बायाँ फेफड़ा
+    layperson_kn: ಎಡ ಶ್ವಾಸಕೋಶ
+  - id: organ_lung_right
+    mesh_name: r-organ-lung-right
+    view: interior
+    layer: organs
+    fma_id: FMA:7309
+    clinical_term: Right lung
+    layperson_en: Right lung
+    layperson_hi: दायाँ फेफड़ा
+    layperson_kn: ಬಲ ಶ್ವಾಸಕೋಶ
+  - id: organ_stomach
+    mesh_name: r-organ-stomach
+    view: interior
+    layer: organs
+    fma_id: FMA:7148
+    clinical_term: Stomach
+    layperson_en: Stomach
+    layperson_hi: पेट / आमाशय
+    layperson_kn: ಜಠರ
+  - id: organ_liver
+    mesh_name: r-organ-liver
+    view: interior
+    layer: organs
+    fma_id: FMA:7197
+    clinical_term: Liver
+    layperson_en: Liver
+    layperson_hi: जिगर
+    layperson_kn: ಯಕೃತ್ತು
+  - id: organ_appendix
+    mesh_name: r-organ-appendix
+    view: interior
+    layer: organs
+    fma_id: FMA:14542
+    clinical_term: Appendix
+    layperson_en: Appendix
+    layperson_hi: अपेंडिक्स
+    layperson_kn: ಅನುಬಂಧ
+  - id: organ_intestine_small
+    mesh_name: r-organ-intestine-small
+    view: interior
+    layer: organs
+    fma_id: FMA:7200
+    clinical_term: Small intestine
+    layperson_en: Small intestine
+    layperson_hi: छोटी आंत
+    layperson_kn: ಸಣ್ಣ ಕರುಳು
+  - id: organ_intestine_large
+    mesh_name: r-organ-intestine-large
+    view: interior
+    layer: organs
+    fma_id: FMA:7201
+    clinical_term: Large intestine
+    layperson_en: Large intestine
+    layperson_hi: बड़ी आंत
+    layperson_kn: ದೊಡ್ಡ ಕರುಳು
+  - id: organ_kidney_left
+    mesh_name: r-organ-kidney-left
+    view: interior
+    layer: organs
+    fma_id: FMA:7204
+    clinical_term: Left kidney
+    layperson_en: Left kidney
+    layperson_hi: बायाँ गुर्दा
+    layperson_kn: ಎಡ ಮೂತ್ರಪಿಂಡ
+  - id: organ_kidney_right
+    mesh_name: r-organ-kidney-right
+    view: interior
+    layer: organs
+    fma_id: FMA:7205
+    clinical_term: Right kidney
+    layperson_en: Right kidney
+    layperson_hi: दायाँ गुर्दा
+    layperson_kn: ಬಲ ಮೂತ್ರಪಿಂಡ
+  - id: organ_bladder
+    mesh_name: r-organ-bladder
+    view: interior
+    layer: organs
+    fma_id: FMA:15900
+    clinical_term: Urinary bladder
+    layperson_en: Bladder
+    layperson_hi: मूत्राशय
+    layperson_kn: ಮೂತ್ರಕೋಶ
+  - id: organ_brain
+    mesh_name: r-organ-brain
+    view: interior
+    layer: organs
+    fma_id: FMA:50801
+    clinical_term: Brain
+    layperson_en: Brain
+    layperson_hi: दिमाग
+    layperson_kn: ಮೆದುಳು
+  - id: organ_throat
+    mesh_name: r-organ-throat
+    view: interior
+    layer: organs
+    fma_id: FMA:9472
+    clinical_term: Throat / pharynx
+    layperson_en: Throat
+    layperson_hi: गला
+    layperson_kn: ಗಂಟಲು
+  - id: organ_thyroid
+    mesh_name: r-organ-thyroid
+    view: interior
+    layer: organs
+    fma_id: FMA:9603
+    clinical_term: Thyroid
+    layperson_en: Thyroid (front of neck)
+    layperson_hi: थायरॉइड
+    layperson_kn: ಥೈರಾಯಿಡ್
+  - id: organ_eye_left
+    mesh_name: r-organ-eye-left
+    view: interior
+    layer: organs
+    fma_id: FMA:54448
+    clinical_term: Left eye
+    layperson_en: Left eye
+    layperson_hi: बायीं आँख
+    layperson_kn: ಎಡ ಕಣ್ಣು
+  - id: organ_eye_right
+    mesh_name: r-organ-eye-right
+    view: interior
+    layer: organs
+    fma_id: FMA:54449
+    clinical_term: Right eye
+    layperson_en: Right eye
+    layperson_hi: दायीं आँख
+    layperson_kn: ಬಲ ಕಣ್ಣು
+  - id: organ_uterus
+    mesh_name: r-organ-uterus
+    view: interior
+    layer: organs
+    fma_id: FMA:17558
+    clinical_term: Uterus
+    layperson_en: Uterus / womb
+    layperson_hi: गर्भाशय
+    layperson_kn: ಗರ್ಭಾಶಯ
+  - id: organ_pancreas
+    mesh_name: r-organ-pancreas
+    view: interior
+    layer: organs
+    fma_id: FMA:7198
+    clinical_term: Pancreas
+    layperson_en: Pancreas
+    layperson_hi: अग्न्याशय
+    layperson_kn: ಮೇದೋಜ್ಜೀರಕ ಗ್ರಂಥಿ
+  - id: organ_gallbladder
+    mesh_name: r-organ-gallbladder
+    view: interior
+    layer: organs
+    fma_id: FMA:7202
+    clinical_term: Gallbladder
+    layperson_en: Gallbladder
+    layperson_hi: पित्ताशय
+    layperson_kn: ಪಿತ್ತಾಶಯ

@@ -1,0 +1,22 @@
+text,label,category,source
+intermittent mild cough at night,0,routine,seed
+sometimes feel slightly nauseous on empty stomach,0,routine,seed
+"mild scalp itching, suspect dandruff",0,routine,seed
+"neck rigid, fever, vomiting and very confused",1,meningitis,seed
+"cold for three days, runny nose and mild cough",0,routine,seed
+small blister on heel from new shoes,0,routine,seed
+"rash spreading fast, mouth tingling, cannot get air in",1,anaphylaxis,seed
+can't lift my arm and my words are coming out wrong,1,stroke,seed
+"small cut on finger from cooking, bleeding stopped",0,routine,seed
+"writing my goodbye notes, ready to end it all",1,suicidal_ideation,seed
+"patch of dry skin on elbow, itches sometimes",0,routine,seed
+"snake bite half hour ago, swelling spreading up the arm",1,trauma,seed
+"baby gasping for air, ribs sucking in with each breath",1,pediatric_critical,seed
+loose motions twice today after street food,0,routine,seed
+"crushing chest pain radiating to left arm and jaw, sweating, short of breath",1,cardiac_acs,seed
+"tooth sensitivity to cold drinks, not constant",0,routine,seed
+"small hangnail, slightly painful",0,routine,seed
+"fever, fast heart, rapid breathing, blood pressure low",1,sepsis,seed
+"mild leg cramp at night, woke me briefly",0,routine,seed
+passing black tarry stool with severe stomach pain,1,gi_emergency,seed
+occasional heartburn after spicy meals,0,routine,seed

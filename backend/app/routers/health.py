@@ -7,6 +7,6 @@ router = APIRouter(tags=["health"])
 async def health() -> dict[str, str]:
     return {
         "status": "ok",
-        "version": "0.3.0",
+        "version": "0.5.1",
         "service": "asha-ai-backend",
     }

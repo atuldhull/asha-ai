@@ -176,4 +176,4 @@ def test_response_includes_esi_and_disclaimer():
     body = _post("severe chest pain radiating to left arm with sweating").json()
     assert "esi" in body
     assert "disclaimer" in body
-    assert body["version"] == "0.3.0"
+    assert body["version"] == "0.5.1"

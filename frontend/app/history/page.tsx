@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'framer-motion';
 import { History, Home, Stethoscope, Siren, ChevronRight, MessageSquare } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
+import { ChronicleCheckIn } from '@/components/ChronicleCheckIn';
 import { useUser } from '@/lib/auth';
 import { listSessionsForUser, previewText, type StoredSession } from '@/lib/sessions';
-import type { CareLevel } from '@/lib/types';
+import type { CareLevel, RiskLevel } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function HistoryPage() {
@@ -61,8 +62,13 @@ export default function HistoryPage() {
                   initial={reduce ? false : { opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2, delay: reduce ? 0 : i * 0.03 }}
+                  className="space-y-2"
                 >
                   <SessionRow session={s} />
+                  {/* Plan 7.x — Chronicle Mode daily check-in. Self-hides
+                      when outside 7-day active window or when today's
+                      check-in already landed. */}
+                  <ChronicleCheckIn session={s} />
                 </motion.li>
               ))}
             </ul>
@@ -95,6 +101,7 @@ function SessionRow({ session }: { session: StoredSession }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className={`text-sm font-semibold ${verdictMeta.color}`}>{verdictMeta.label}</span>
+            {verdict?.risk && <RiskPill level={verdict.risk.level} score={verdict.risk.score} />}
             <span className="text-xs text-slate-500" suppressHydrationWarning>
               · {formatDistanceToNow(session.startedAt, { addSuffix: true })}
             </span>
@@ -148,6 +155,25 @@ function EmptyState() {
     </div>
   );
 }
+
+function RiskPill({ level, score }: { level: RiskLevel; score: number }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0 text-[10px] font-medium tabular-nums ${RISK_PILL_TONE[level]}`}
+      title={`Dynamic risk score: ${score}/100 (${level})`}
+    >
+      <span className="opacity-70">risk</span>
+      {score}
+    </span>
+  );
+}
+
+const RISK_PILL_TONE: Record<RiskLevel, string> = {
+  CRITICAL: 'bg-red-500/15 border-red-500/40 text-red-300',
+  HIGH: 'bg-orange-500/15 border-orange-500/40 text-orange-300',
+  MODERATE: 'bg-amber-500/15 border-amber-500/40 text-amber-300',
+  LOW: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300',
+};
 
 const VERDICT_STYLES: Record<
   CareLevel,

@@ -16,12 +16,23 @@ import { getSupabase, supabaseConfigured } from './supabase';
 export interface User {
   id: string;
   phone: string;
-  role: 'patient' | 'doctor';
+  role: 'patient' | 'doctor' | 'asha';
   createdAt: number;
 }
 
 const STORAGE_KEY = 'asha-ai:user';
 const DOCTOR_PHONE_ALLOWLIST = ['+919999999999', '+15555550100']; // demo doctors
+// ASHA worker phone allow-list. Real-world this lives in Supabase
+// `profiles.role`; for the demo we hardcode a few. The +91 numbers below
+// won't collide with real Indian numbers — they're outside the active
+// numbering plan.
+const ASHA_PHONE_ALLOWLIST = ['+918888888888', '+917777777777'];
+
+function roleForPhone(phone: string): User['role'] {
+  if (DOCTOR_PHONE_ALLOWLIST.includes(phone)) return 'doctor';
+  if (ASHA_PHONE_ALLOWLIST.includes(phone)) return 'asha';
+  return 'patient';
+}
 
 /* ─────────────────── localStorage demo mode ─────────────────── */
 
@@ -86,7 +97,7 @@ export async function verifyOtp(
     const user: User = {
       id: data.user.id,
       phone: normalized,
-      role: DOCTOR_PHONE_ALLOWLIST.includes(normalized) ? 'doctor' : 'patient',
+      role: roleForPhone(normalized),
       createdAt: Date.now(),
     };
     writeLocalUser(user);
@@ -98,7 +109,7 @@ export async function verifyOtp(
   const user: User = {
     id: `demo-${normalized}`,
     phone: normalized,
-    role: DOCTOR_PHONE_ALLOWLIST.includes(normalized) ? 'doctor' : 'patient',
+    role: roleForPhone(normalized),
     createdAt: Date.now(),
   };
   writeLocalUser(user);
@@ -131,7 +142,7 @@ export function useUser(): { user: User | null; loading: boolean } {
           const fresh: User = {
             id: data.user.id,
             phone: data.user.phone ?? '',
-            role: DOCTOR_PHONE_ALLOWLIST.includes(data.user.phone ?? '') ? 'doctor' : 'patient',
+            role: roleForPhone(data.user.phone ?? ''),
             createdAt: Date.now(),
           };
           writeLocalUser(fresh);

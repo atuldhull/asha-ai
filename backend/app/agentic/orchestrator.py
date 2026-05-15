@@ -270,6 +270,7 @@ def orchestrate_synthetic(
     history: list[str] | str | None = None,
     vitals: dict | str | None = None,
     language: str = "en",
+    pins: list[dict] | None = None,
 ) -> Verdict:
     """Run the 5 tools in the canonical AGENTIC_TOOLS.md sequence."""
     refusal = detect_refusal_category(patient_text or "")
@@ -280,8 +281,10 @@ def orchestrate_synthetic(
 
     calls: list[ToolCall] = []
 
-    # Step 1 — extract_symptoms
-    extract_args = {"patient_text": patient_text, "language": language}
+    # Step 1 — extract_symptoms (Plan 6.1: pins inject FMA context)
+    extract_args: dict[str, Any] = {"patient_text": patient_text, "language": language}
+    if pins:
+        extract_args["pins"] = pins
     extract_res = tool_extract_symptoms(**extract_args)
     calls.append(ToolCall("extract_symptoms", extract_args, extract_res))
     tokens = [s["name"] for s in extract_res.get("symptoms", [])]
@@ -403,6 +406,7 @@ async def orchestrate_via_gemini(
     history: list[str] | str | None = None,
     vitals: dict | str | None = None,
     language: str = "en",
+    pins: list[dict] | None = None,
 ) -> Verdict:
     """Real Gemini function-calling orchestrator."""
     refusal = detect_refusal_category(patient_text or "")
@@ -416,6 +420,7 @@ async def orchestrate_via_gemini(
         return orchestrate_synthetic(
             patient_text, age=age, sex=sex,
             history=history, vitals=vitals, language=language,
+            pins=pins,
         )
 
     import google.generativeai as genai
@@ -601,6 +606,7 @@ async def orchestrate(
     history: list[str] | str | None = None,
     vitals: dict | str | None = None,
     language: str = "en",
+    pins: list[dict] | None = None,
 ) -> Verdict:
     """Choose the orchestrator based on AGENTIC_MODE env var.
 
@@ -610,23 +616,31 @@ async def orchestrate(
       - 'synthetic'     — deterministic, no Gemini call (good for CI)
       - 'gemini' / 'on' — real Gemini function-calling, falls back to
                           synthetic if the SDK or API key is missing
+
+    `pins` is the Symptom Cinema v1/v1.5 body-map data from
+    `TriageRequest.structured_symptoms`. When provided, Plan 6.1
+    enrichment fires (FMA-aligned anatomical context injected into
+    extract_symptoms).
     """
     mode = os.getenv("AGENTIC_MODE", "off").lower()
     if mode == "synthetic":
         return orchestrate_synthetic(
             patient_text, age=age, sex=sex,
             history=history, vitals=vitals, language=language,
+            pins=pins,
         )
     if mode in {"gemini", "on", "true", "1"}:
         return await orchestrate_via_gemini(
             patient_text, age=age, sex=sex,
             history=history, vitals=vitals, language=language,
+            pins=pins,
         )
     # Default: synthetic path, so callers that explicitly opt in via
     # router code always get a structured tool_calls trace.
     return orchestrate_synthetic(
         patient_text, age=age, sex=sex,
         history=history, vitals=vitals, language=language,
+        pins=pins,
     )
 
 

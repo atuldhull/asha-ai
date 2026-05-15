@@ -24,6 +24,8 @@ from app.core.disclaimers import DISCLAIMER, MENTAL_HEALTH_HELPLINES
 from app.core.safety import detect_refusal_category
 from app.ml.classifier import featurize_for_model, get_classifier
 from app.ml.featurize import extract_symptoms, featurize
+from app.ml.red_flag_classifier import is_emergency as ml_red_flag_check
+from app.models.risk import RiskComputeRequest, SymptomInput, VitalProxy
 from app.models.triage import (
     CareLevel,
     Citation,
@@ -31,6 +33,7 @@ from app.models.triage import (
     RedFlagOut,
     TriageResponse,
 )
+from app.risk.scoring import compute_score, escalate_care_level
 from app.rag.retriever import retrieve as rag_retrieve
 from app.triage_logic.differential import build_differential
 from app.triage_logic.esi import (
@@ -205,8 +208,22 @@ def run_pipeline(
     # Pick the ML-or-severity layer's verdict (ML wins when present).
     ml_or_severity_level = ml_label if ml_label is not None else esi_level
 
+    # Plan 5.2 — parallel ML red-flag classifier (DistilBERT ONNX). Runs
+    # alongside the 9 rule layer; either firing escalates. Graceful
+    # no-op when model isn't loaded (see app/ml/red_flag_classifier.py).
+    ml_rf_is_em, _ml_rf_conf = ml_red_flag_check(symptoms_text)
+    ml_red_flag_fired = bool(ml_rf_is_em)
+
     # 5. Apply the safety property.
     final_level = final_care_level(rf_result.flags, ml_or_severity_level)
+    if ml_red_flag_fired and final_level != "Emergency Room":
+        # ML layer caught a paraphrased presentation the rule layer
+        # missed. Escalate per the defense-in-depth contract.
+        logger.info(
+            "ml_red_flag: escalating to ER (rule_layer=%s, ml_conf=%.3f)",
+            final_level, _ml_rf_conf or 0.0,
+        )
+        final_level = "Emergency Room"
 
     # Soft floor: if no red flag and severity is low, prefer the Plan 1.0
     # free-text rules — they have user-friendly Home Care / Clinic Visit
@@ -253,7 +270,33 @@ def run_pipeline(
             )
         ]
 
-    # 7. Build the response.
+    # 7. Plan 5.1 — compute dynamic risk score, then apply escalate-only
+    # safety property. Risk runs AFTER red-flag layer; it can only push
+    # the verdict up the ladder, never down. An existing red-flag ER is
+    # protected unconditionally.
+    risk_request = RiskComputeRequest(
+        symptoms=[
+            SymptomInput(name=t, severity=6, onset_hours_ago=12.0)
+            for t in sym_tokens
+        ],
+        age=age if age is not None else 35,
+        sex=sex or "other",
+        comorbidities=sorted(hist_tokens),
+        vital_proxy=VitalProxy(
+            breathing_rate=vitals_dict.get("rr") if isinstance(vitals_dict.get("rr"), int) else None,
+            heart_rate=vitals_dict.get("hr") if isinstance(vitals_dict.get("hr"), int) else None,
+        ),
+    )
+    risk_assessment = compute_score(risk_request)
+
+    has_red_flag_er = any(f.force_level == "Emergency Room" for f in rf_result.flags)
+    escalated_level = escalate_care_level(
+        final_level, risk_assessment, has_red_flag_er=has_red_flag_er,
+    )
+    risk_escalated = escalated_level != final_level
+    final_level = escalated_level
+
+    # 8. Build the response.
     reasoning = _reasoning_for(final_level, rf_result.flags, freetext_response)
     response = TriageResponse(
         level=CareLevel(final_level),
@@ -265,6 +308,8 @@ def run_pipeline(
         model_version=ml_version,
         citations=citations_out,
         differential=differential_out,
+        risk=risk_assessment,
+        risk_escalated=risk_escalated,
     )
 
     return PipelineResult(

@@ -34,13 +34,58 @@ EXTRACT_SYMPTOMS_DECL = {
         "properties": {
             "patient_text": {"type": "string"},
             "language": {"type": "string", "enum": ["en", "hi", "kn"]},
+            "pins": {
+                "type": "array",
+                "description": (
+                    "Optional Symptom Cinema pins (body-map taps). When "
+                    "provided, FMA-coded anatomical context is injected "
+                    "into the symptom-extraction prompt."
+                ),
+                "items": {"type": "object"},
+            },
         },
         "required": ["patient_text"],
     },
 }
 
 
-def tool_extract_symptoms(patient_text: str, language: str = "en") -> dict[str, Any]:
+def _anatomical_context_from_pins(pins: list[dict] | None) -> str:
+    """Build an FMA-aligned anatomical context block when Pin v1.5 fma_id
+    is present. Empty string when pins are absent or carry no fma_id.
+
+    Format (one line per pin with fma_id):
+      "Anatomical region: <clinical_term> (FMA: <fma_id>)"
+    """
+    if not pins:
+        return ""
+    from app.triage_logic.body_map import clinical_term_for, validate_fma
+
+    lines: list[str] = []
+    for pin in pins:
+        fma_id = pin.get("fma_id")
+        body_region = pin.get("body_region")
+        if not fma_id or not body_region:
+            continue
+        validate_fma(body_region, fma_id)  # logs warning on mismatch
+        clinical_term = clinical_term_for(body_region) or body_region
+        lines.append(f"Anatomical region: {clinical_term} (FMA: {fma_id})")
+    return "\n".join(lines)
+
+
+def tool_extract_symptoms(
+    patient_text: str,
+    language: str = "en",
+    pins: list[dict] | None = None,
+) -> dict[str, Any]:
+    anatomical_context = _anatomical_context_from_pins(pins)
+    enriched_text = patient_text or ""
+    if anatomical_context:
+        # The LLM sees the FMA context as part of its symptom-extraction
+        # input. Free-text extractor (regex tokens) sees only the original
+        # patient_text so it doesn't accidentally match "fma" or
+        # "anatomical" as symptom tokens.
+        enriched_text = f"{patient_text}\n\n[Body-map context]\n{anatomical_context}"
+
     tokens = _extract_text(patient_text or "")
     feats = _featurize(patient_text or "")
     needs_followup = False
@@ -61,6 +106,7 @@ def tool_extract_symptoms(patient_text: str, language: str = "en") -> dict[str, 
         "is_child": feats.get("is_child", False),
         "is_pregnant": feats.get("is_pregnant", False),
         "language": language,
+        "anatomical_context": anatomical_context or None,
     }
 
 

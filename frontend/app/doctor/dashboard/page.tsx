@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
@@ -16,18 +16,37 @@ import {
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { DifferentialPanel } from '@/components/DifferentialPanel';
+import { RiskTrajectoryCard } from '@/components/RiskTrajectoryCard';
 import { useUser } from '@/lib/auth';
 import {
   listAllSessionsForDoctor,
   markReviewed,
   type StoredSession,
 } from '@/lib/sessions';
-import type { CareLevel } from '@/lib/types';
+import type { CareLevel, RiskLevel } from '@/lib/types';
 import { subscribeToNewVerdicts } from '@/lib/realtime';
+import { seedDoctorDemo, clearDoctorDemo } from '@/lib/demo-seed';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function DoctorDashboardPage() {
+  // useSearchParams() requires a Suspense boundary in production builds,
+  // matching the pattern used in /sign-in (where the seeder is invoked via
+  // ?seed=demo on the cockpit URL).
+  return (
+    <Suspense fallback={
+      <>
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center text-slate-500">Loading…</div>
+      </>
+    }>
+      <DoctorDashboardInner />
+    </Suspense>
+  );
+}
+
+function DoctorDashboardInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useUser();
   const [sessions, setSessions] = useState<StoredSession[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -46,6 +65,15 @@ export default function DoctorDashboardPage() {
     );
     chimeRef.current.volume = 0.4;
   }, []);
+
+  // Plan 5.1 demo seeder — `?seed=demo` populates 6 synthetic sessions
+  // covering all care levels, risk tiers, and trajectory states. Idempotent;
+  // re-runs replace the same rows by id. `?seed=clear` removes them.
+  useEffect(() => {
+    const seed = searchParams?.get('seed');
+    if (seed === 'demo') seedDoctorDemo({ force: true });
+    else if (seed === 'clear') clearDoctorDemo();
+  }, [searchParams]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -71,9 +99,13 @@ export default function DoctorDashboardPage() {
     });
     // Polling kept as a 60s safety net in case realtime drops
     const interval = setInterval(refresh, 60_000);
+    // Catch local-storage writes (seeder, /triage submissions) so the queue
+    // updates instantly without waiting for the 60s poll.
+    window.addEventListener('asha-ai:sessions-change', refresh);
     return () => {
       unsubscribe();
       clearInterval(interval);
+      window.removeEventListener('asha-ai:sessions-change', refresh);
     };
   }, [user, authLoading, includeReviewed, refreshTick, reduce]);
 
@@ -231,6 +263,10 @@ function QueueRow({
           <span className={`text-xs font-semibold ${meta?.color ?? 'text-slate-400'}`}>
             {v?.level ?? 'In progress'}
           </span>
+          {v?.risk && <RiskPill level={v.risk.level} score={v.risk.score} />}
+          {session.inputMode && session.inputMode !== 'text' && (
+            <InputModeChip mode={session.inputMode} />
+          )}
           {session.reviewedAt && (
             <CheckCircle2 className="h-3 w-3 text-emerald-400" aria-label="Reviewed" />
           )}
@@ -246,6 +282,61 @@ function QueueRow({
     </button>
   );
 }
+
+function RiskPill({ level, score }: { level: RiskLevel; score: number }) {
+  const tone = RISK_PILL_TONE[level];
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0 text-[10px] font-medium tabular-nums ${tone}`}
+      title={`Dynamic risk score: ${score}/100 (${level})`}
+    >
+      <span className="opacity-70">risk</span>
+      {score}
+    </span>
+  );
+}
+
+/**
+ * Plan 6.1 — surfaces how the patient input arrived (3D body tap vs voice
+ * vs chat). Helps the doctor weight the structured-symptom signal: a
+ * `body_map_3d` session has FMA-anchored regions in the LLM context, while
+ * a `text` session is free text.
+ */
+function InputModeChip({ mode }: { mode: 'voice' | 'body_map' | 'body_map_3d' }) {
+  const META: Record<typeof mode, { label: string; title: string; tone: string }> = {
+    voice: {
+      label: '🎤 voice',
+      title: 'Patient submitted via voice (Bhashini ASR)',
+      tone: 'border-sky-500/40 bg-sky-500/10 text-sky-300',
+    },
+    body_map: {
+      label: 'body',
+      title: 'Patient submitted via 2D body map',
+      tone: 'border-purple-500/40 bg-purple-500/10 text-purple-300',
+    },
+    body_map_3d: {
+      label: '3D body',
+      title: 'Patient submitted via 3D body map (FMA-coded regions)',
+      tone: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+    },
+  };
+  const meta = META[mode];
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0 text-[10px] font-medium ${meta.tone}`}
+      title={meta.title}
+    >
+      {meta.label}
+    </span>
+  );
+}
+
+const RISK_PILL_TONE: Record<RiskLevel, string> = {
+  CRITICAL: 'bg-red-500/15 border-red-500/40 text-red-300',
+  HIGH: 'bg-orange-500/15 border-orange-500/40 text-orange-300',
+  MODERATE: 'bg-amber-500/15 border-amber-500/40 text-amber-300',
+  LOW: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300',
+};
 
 function DetailPane({ session }: { session: StoredSession }) {
   const v = session.verdict;
@@ -283,13 +374,29 @@ function DetailPane({ session }: { session: StoredSession }) {
           className={`rounded-xl border-2 p-4 mb-6 ${meta.bgPanel} ${meta.borderPanel}`}
           role="status"
         >
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className={`text-sm font-semibold ${meta.color}`}>{v.level}</span>
+            {v.risk_escalated && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300"
+                title="Dynamic risk score escalated this verdict to a higher care level. Risk can only escalate, never downgrade."
+              >
+                ↑ escalated by risk
+              </span>
+            )}
             {v.red_flags && v.red_flags.length > 0 && (
-              <span className="text-xs text-slate-400">· {v.red_flags.join(', ')}</span>
+              <span className="text-xs text-slate-400">
+                · {v.red_flags.map((rf) => (typeof rf === 'string' ? rf : rf.rule_name)).join(', ')}
+              </span>
             )}
           </div>
           <p className="text-sm text-slate-200 leading-relaxed">{v.reasoning}</p>
+        </div>
+      )}
+
+      {v?.risk && (
+        <div className="mb-6">
+          <RiskTrajectoryCard risk={v.risk} history={session.riskHistory ?? []} />
         </div>
       )}
 

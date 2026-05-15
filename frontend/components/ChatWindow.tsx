@@ -2,9 +2,26 @@
 
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, User, Loader2 } from 'lucide-react';
+import { Bot, Loader2, User } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import type { ChatMessage } from '@/lib/types';
 import { cn } from '@/lib/cn';
+import { useTranslation } from '@/lib/i18n/I18nProvider';
+
+// Plan 6.2 — NeuralNet lazily loaded so the R3F bundle is not in the chat
+// route's initial JS. Loaded only when a triage submission is in flight.
+const NeuralNet = dynamic(
+  () => import('./3d/NeuralNet').then((m) => ({ default: m.NeuralNet })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center gap-2 rounded-2xl rounded-tl-md bg-[#111728] border border-slate-800 px-4 py-3 text-sm text-slate-400">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        <span>Analyzing symptoms…</span>
+      </div>
+    ),
+  },
+);
 
 interface ChatWindowProps {
   messages: ChatMessage[];
@@ -19,6 +36,7 @@ interface ChatWindowProps {
  */
 export function ChatWindow({ messages, loading = false }: ChatWindowProps) {
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -79,14 +97,19 @@ export function ChatWindow({ messages, loading = false }: ChatWindowProps) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex items-center gap-3"
+          className="flex items-start gap-3"
         >
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
             <Bot className="h-4 w-4" />
           </div>
-          <div className="flex items-center gap-2 rounded-2xl rounded-tl-md bg-[#111728] border border-slate-800 px-4 py-3 text-sm text-slate-400">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Analyzing symptoms…
+          {/* Plan 6.2 — NeuralNet thinking visualizer. Self-collapses to a
+              static "Analyzing…" pill under reduced-motion. */}
+          <div className="flex-1 max-w-sm">
+            <NeuralNet
+              isThinking={loading}
+              caption={t('neural.analyzing')}
+              height={88}
+            />
           </div>
         </motion.div>
       )}

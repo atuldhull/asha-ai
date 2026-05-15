@@ -34,3 +34,7 @@ next-env.d.ts
 
 # vercel
 .vercel
+
+# Plan 6.1 anatomy source files (large, manually downloaded — README is committed)
+anatomy-source/*
+!anatomy-source/README.md

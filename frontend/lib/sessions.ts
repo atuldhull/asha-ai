@@ -11,7 +11,13 @@
  */
 'use client';
 
-import type { ChatMessage, TriageResponse } from './types';
+import { compositePriority } from './risk';
+import type {
+  ChatMessage,
+  InputMode,
+  RiskHistoryPoint,
+  TriageResponse,
+} from './types';
 
 export interface StoredSession {
   id: string;
@@ -21,9 +27,16 @@ export interface StoredSession {
   messages: ChatMessage[];
   verdict: TriageResponse | null;
   reviewedAt: number | null; // for doctor cockpit
+  /** Plan 5.1 — last 48 risk score samples, oldest-first. */
+  riskHistory?: RiskHistoryPoint[];
+  /** Plan 6.1 — origin of the symptom data (chat / voice / 3D body map).
+   *  Surfaced on the doctor cockpit so the reviewer knows whether the
+   *  patient pointed at a 3D body or typed in chat. */
+  inputMode?: InputMode;
 }
 
 const SESSIONS_KEY = 'asha-ai:sessions';
+const RISK_HISTORY_MAX = 48;
 
 /* ──────── private helpers ──────── */
 
@@ -79,6 +92,28 @@ export function setVerdict(sessionId: string, verdict: TriageResponse): void {
   if (!s) return;
   s.verdict = verdict;
   s.endedAt = Date.now();
+  if (verdict.risk) {
+    const history = s.riskHistory ?? [];
+    history.push({
+      ts: verdict.risk.computed_at ?? new Date().toISOString(),
+      score: verdict.risk.score,
+    });
+    s.riskHistory = history.slice(-RISK_HISTORY_MAX);
+  }
+  writeAll(all);
+}
+
+/**
+ * Append a fresh risk-score sample without rewriting the verdict — used by
+ * the backend recompute task or by the demo seeder that synthesises history.
+ */
+export function appendRiskSample(sessionId: string, point: RiskHistoryPoint): void {
+  const all = readAll();
+  const s = all[sessionId];
+  if (!s) return;
+  const history = s.riskHistory ?? [];
+  history.push(point);
+  s.riskHistory = history.slice(-RISK_HISTORY_MAX);
   writeAll(all);
 }
 
@@ -87,6 +122,19 @@ export function markReviewed(sessionId: string): void {
   const s = all[sessionId];
   if (!s) return;
   s.reviewedAt = Date.now();
+  writeAll(all);
+}
+
+/**
+ * Plan 6.1 — record the origin of the symptom data on the session so the
+ * doctor cockpit can surface a "3D body" vs "chat" vs "voice" chip. Idempotent.
+ */
+export function setInputMode(sessionId: string, mode: InputMode): void {
+  const all = readAll();
+  const s = all[sessionId];
+  if (!s) return;
+  if (s.inputMode === mode) return;
+  s.inputMode = mode;
   writeAll(all);
 }
 
@@ -101,23 +149,19 @@ export function listSessionsForUser(userId: string): StoredSession[] {
 
 /**
  * List ALL sessions (doctor cockpit). Excludes already-reviewed by default.
+ *
+ * Sort: composite ESI × risk score (Plan 5.1). ESI is dominant (clinical
+ * protocol takes precedence) and the dynamic risk score breaks ties
+ * between same-ESI cases — so a deteriorating ESI-3 floats above a stable ESI-3.
  */
 export function listAllSessionsForDoctor(opts?: { includeReviewed?: boolean }): StoredSession[] {
   const includeReviewed = opts?.includeReviewed ?? false;
   return Object.values(readAll())
     .filter((s) => s.verdict !== null && (includeReviewed || !s.reviewedAt))
     .sort((a, b) => {
-      // Sort by ESI urgency (Emergency > Clinic > Home), then newest first
-      const order = esiOrder(b) - esiOrder(a);
-      return order !== 0 ? order : b.startedAt - a.startedAt;
+      const priorityDelta = compositePriority(b.verdict) - compositePriority(a.verdict);
+      return priorityDelta !== 0 ? priorityDelta : b.startedAt - a.startedAt;
     });
-}
-
-function esiOrder(s: StoredSession): number {
-  if (!s.verdict) return 0;
-  if (s.verdict.level === 'Emergency Room') return 3;
-  if (s.verdict.level === 'Clinic Visit') return 2;
-  return 1;
 }
 
 /**

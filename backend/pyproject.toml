@@ -20,6 +20,12 @@ dependencies = [
     "numpy>=1.26.0",
     "python-multipart>=0.0.9",
     "google-generativeai>=0.8.0",
+    # Tier 6.6 Phase A · auth + OTP
+    "redis>=5.0.0",
+    # Tier 6.6 Phase D · alembic + SQLAlchemy + postgres
+    "alembic>=1.13.0",
+    "sqlalchemy>=2.0.0",
+    "psycopg[binary,pool]>=3.2.0",
 ]
 
 [project.optional-dependencies]
@@ -32,6 +38,52 @@ ml = [
     "xgboost>=2.0.0",
     "shap>=0.45.0",
     "scikit-learn>=1.5.0",
+]
+# Plan 5.2 — ML red-flag classifier (DistilBERT fine-tune + ONNX export + serve).
+# Backend wraps the ONNX artifact via `app/ml/red_flag_classifier.py`; without
+# these deps the wrapper falls back to graceful no-op (rule layer remains
+# authoritative). Pin to ranges that match the ONNX opset_version=14 in
+# `ml/train_red_flag.py`.
+red_flag_ml = [
+    "transformers>=4.40.0,<5.0",
+    "torch>=2.0.0",
+    "onnx>=1.15.0",
+    "onnxruntime>=1.17.0",
+    "datasets>=2.18.0",
+]
+# Tier 6.6 Phase E · Celery + Flower background jobs
+celery = [
+    "celery[redis]>=5.4.0",
+    "flower>=2.0.1",
+]
+# Tier 6.6 Phase F · observability stack
+observability = [
+    "sentry-sdk[fastapi]>=2.0.0",
+    "prometheus-client>=0.20.0",
+    "prometheus-fastapi-instrumentator>=7.0.0",
+]
+# Tier 6.6 Phase H · Razorpay + FCM auth
+integrations = [
+    "google-auth>=2.30.0",
+]
+# Tier 6.6 Phase D · MinIO S3-compatible object store
+storage = [
+    "minio>=7.2.0",
+]
+# Tier 6.5 Phase D + E + F · RAG 2.0 (Qdrant hybrid + nomic + reranker + HyDE)
+rag2 = [
+    "qdrant-client>=1.11.0",
+    "fastembed>=0.3.0",
+    "sentence-transformers>=3.0.0",
+    "einops>=0.7.0",   # nomic-embed-text-v1.5 requires this
+]
+# Tier 6.5 Phase B · Whisper Turbo (voice STT)
+voice = [
+    "faster-whisper>=1.0.0",
+]
+# Convenience: every optional dep at once for prod deployment.
+prod = [
+    "asha-ai-backend[red_flag_ml,celery,observability,integrations,storage]",
 ]
 
 [tool.setuptools.packages.find]

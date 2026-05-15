@@ -1,21 +1,28 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2 } from 'lucide-react';
+import { Suspense, useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { Send, Loader2, PersonStanding } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { ChatWindow } from '@/components/ChatWindow';
 import { ChipButton } from '@/components/ChipButton';
 import { VerdictCard } from '@/components/VerdictCard';
 import { VoiceButton } from '@/components/VoiceButton';
 import { MentalHealthScreen } from '@/components/MentalHealthScreen';
+import { ImageUploadButton } from '@/components/ImageUploadButton';
 import { postTriage } from '@/lib/api';
+import type { VisionTriageResponse } from '@/lib/vision';
 import { useUser } from '@/lib/auth';
 import { useTranslation } from '@/lib/i18n/I18nProvider';
+import { getActiveProfile, type PatientProfile } from '@/lib/family-graph';
 import {
   appendMessage,
   createSession,
+  getSession,
   setVerdict as persistVerdict,
 } from '@/lib/sessions';
+import { ensureRisk, escalateCareLevel } from '@/lib/risk';
 import type { ChatMessage, TriageResponse } from '@/lib/types';
 
 const QUICK_CHIPS = [
@@ -40,8 +47,45 @@ function localSuicidalCheck(text: string): boolean {
 }
 
 export default function TriagePage() {
+  // useSearchParams() requires a Suspense boundary in production builds.
+  // Plan 6.1's body-map-3d page redirects here with ?fallback=... when WebGL2
+  // is missing or reduced-motion is on; that callsite needs the wrapper too.
+  return (
+    <Suspense fallback={
+      <>
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center text-slate-500">Loading…</div>
+      </>
+    }>
+      <TriagePageInner />
+    </Suspense>
+  );
+}
+
+function TriagePageInner() {
   const { user } = useUser();
   const { t } = useTranslation();
+  const searchParams = useSearchParams();
+  const fallbackReason = searchParams.get('fallback');
+
+  // Plan 7.x — Family Health Graph integration. When the user has switched
+  // to a non-self profile (e.g. "Mom, 67, diabetic"), pass age + comorbidity
+  // history into the triage payload so the backend severity / risk pipeline
+  // applies the right age multiplier + comorbidity weights.
+  const [activeProfile, setActiveProfileState] = useState<PatientProfile | null>(null);
+  useEffect(() => {
+    if (!user) {
+      setActiveProfileState(null);
+      return;
+    }
+    setActiveProfileState(getActiveProfile(user.id));
+    function refresh() {
+      if (!user) return;
+      setActiveProfileState(getActiveProfile(user.id));
+    }
+    window.addEventListener('asha-ai:family-change', refresh);
+    return () => window.removeEventListener('asha-ai:family-change', refresh);
+  }, [user]);
 
   const initialMessage: ChatMessage = {
     id: 'init',
@@ -100,20 +144,52 @@ export default function TriagePage() {
     if (sId) appendMessage(sId, userMsg);
 
     try {
-      const response = await postTriage({ symptoms: trimmed });
+      const profileHistory = activeProfile?.comorbidities
+        ? activeProfile.comorbidities
+            .split(',')
+            .map((c) => c.trim())
+            .filter(Boolean)
+        : undefined;
+      const response = await postTriage({
+        symptoms: trimmed,
+        ...(activeProfile?.age !== undefined ? { age: activeProfile.age } : {}),
+        ...(activeProfile?.sex && activeProfile.sex !== 'other'
+          ? { sex: activeProfile.sex }
+          : {}),
+        ...(profileHistory ? { history: profileHistory } : {}),
+      });
+
+      // Plan 5.1 — enrich the verdict with a risk score (and apply the
+      // escalate-only safety rule) before showing or persisting it. If the
+      // backend already returned a `risk` block we reuse it; otherwise the
+      // deterministic mock fills it in so the sparkline always has data.
+      const history = sId ? getSession(sId)?.riskHistory ?? [] : [];
+      const risk = await ensureRisk(response, trimmed, { history });
+      const escalatedLevel = escalateCareLevel(response.level, risk);
+      // Trust the backend's escalation flag if it set one; otherwise infer
+      // from whether the client mock had to escalate (mock-mode demos).
+      const risk_escalated =
+        response.risk_escalated ?? escalatedLevel !== response.level;
+      const enriched: TriageResponse = {
+        ...response,
+        risk,
+        risk_escalated,
+        level: escalatedLevel,
+      };
+
       const asstMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: response.reasoning,
+        content: enriched.reasoning,
         timestamp: Date.now(),
-        verdict: response,
+        verdict: enriched,
       };
       setMessages((m) => [...m, asstMsg]);
-      setVerdict(response);
-      if (response.mental_health_flag) setShowMentalHealth(true);
+      setVerdict(enriched);
+      if (enriched.mental_health_flag) setShowMentalHealth(true);
       if (sId) {
         appendMessage(sId, asstMsg);
-        persistVerdict(sId, response);
+        persistVerdict(sId, enriched);
       }
     } catch (err) {
       const errMsg: ChatMessage = {
@@ -145,11 +221,56 @@ export default function TriagePage() {
     void handleSubmit(trimmed);
   }
 
+  function handleVisionVerdict(visionVerdict: VisionTriageResponse) {
+    // Plan 6.5 step 10 — image triage flows back into the same chat thread
+    // so the verdict stack stays unified across all input modes.
+    const sId = ensureSession();
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: visionVerdict.image_description ?? '[Image submitted for triage]',
+      timestamp: Date.now(),
+    };
+    setMessages((m) => [...m, userMsg]);
+    if (sId) appendMessage(sId, userMsg);
+
+    const asstMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: visionVerdict.reasoning,
+      timestamp: Date.now(),
+      verdict: visionVerdict,
+    };
+    setMessages((m) => [...m, asstMsg]);
+    setVerdict(visionVerdict);
+    if (sId) {
+      appendMessage(sId, asstMsg);
+      persistVerdict(sId, visionVerdict);
+    }
+  }
+
   return (
     <>
       <Navbar />
       {showMentalHealth && <MentalHealthScreen onClose={() => setShowMentalHealth(false)} />}
       <div className="flex-1 flex flex-col bg-[#0a0e1a]">
+        {/* 3D body-map fallback banner (Plan 6.1) — shown when /triage/body-map-3d
+            redirected the user here due to no WebGL2 or reduced-motion preference. */}
+        {fallbackReason && (
+          <div className="px-4 py-2 bg-sky-500/5 border-b border-sky-500/20 text-xs text-sky-200 text-center">
+            {fallbackReason === 'no-webgl2'
+              ? t('bodymap.fallbackNoWebgl')
+              : t('bodymap.fallbackReducedMotion')}
+          </div>
+        )}
+        {/* Plan 7.x — Active family profile chip. Shows when triaging on
+            behalf of someone other than self so the user always knows whose
+            symptoms are being submitted. */}
+        {activeProfile && activeProfile.relationship !== 'self' && (
+          <div className="px-4 py-1.5 bg-violet-500/5 border-b border-violet-500/20 text-[11px] text-violet-200 text-center">
+            {t('triage.activeProfile').replace('{name}', activeProfile.display_name).replace('{age}', String(activeProfile.age))}
+          </div>
+        )}
         {/* Anonymous-user notice */}
         {!user && (
           <div className="px-4 py-2 bg-amber-500/5 border-b border-amber-500/20 text-xs text-amber-300 text-center">
@@ -204,6 +325,21 @@ export default function TriagePage() {
                 aria-label={t('triage.placeholder')}
               />
               <VoiceButton onTranscript={handleVoiceTranscript} disabled={loading} />
+              <ImageUploadButton onVerdict={handleVisionVerdict} disabled={loading} />
+              <Link
+                href="/triage/body-map-3d"
+                aria-label={t('bodymap.openButton')}
+                title={t('bodymap.openButtonTitle')}
+                className="relative h-10 w-10 rounded-lg border border-slate-800 bg-[#111728] text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300 transition-colors flex items-center justify-center"
+              >
+                <PersonStanding className="h-5 w-5" aria-hidden />
+                <span
+                  aria-hidden
+                  className="absolute -top-1 -right-1 rounded-sm bg-emerald-500 px-1 text-[8px] font-bold leading-tight text-slate-950"
+                >
+                  3D
+                </span>
+              </Link>
               <button
                 type="submit"
                 disabled={loading || !input.trim()}

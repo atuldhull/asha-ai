@@ -1,0 +1,42 @@
+{
+  "base_model": "distilbert-base-multilingual-cased",
+  "data_provenance": "Synthetic dataset from `ml/scripts/synthesize_red_flag_dataset.py` \u2014 9 ESI v5 emergency seeds \u00d7 Gemini paraphrase loop + 60 routine seeds. Pre-deployment requires MBBS panel validation against real emergency-call transcripts (see docs/regulatory/CLINICAL_EVALUATION_PLAN.md).",
+  "eval_metrics": {
+    "confusion_matrix": {
+      "false_neg": 0,
+      "false_pos": 7,
+      "true_neg": 5,
+      "true_pos": 9
+    },
+    "f1_emergency": 0.72,
+    "n_emergency_test": 9,
+    "n_test": 21,
+    "precision_emergency": 0.5625,
+    "recall_emergency": 1.0,
+    "threshold": 0.49999999999999994
+  },
+  "id2label": {
+    "0": "routine",
+    "1": "emergency"
+  },
+  "label2id": {
+    "emergency": 1,
+    "routine": 0
+  },
+  "labels": [
+    "routine",
+    "emergency"
+  ],
+  "max_length": 128,
+  "safety_invariant": "The ML layer can ONLY escalate. A NEGATIVE prediction from this classifier never downgrades a positive rule-layer verdict (the 9 deterministic R1-R9 rules remain authoritative). See backend/app/ml/red_flag_classifier.py SAFETY INVARIANT and the pipeline composition in backend/app/triage_logic/pipeline.py.",
+  "threshold": 0.49999999999999994,
+  "trained_at": "2026-05-15T07:35:26Z",
+  "training_config": {
+    "batch_size": 8,
+    "epochs": 1,
+    "learning_rate": 5e-05,
+    "min_precision_floor": 0.5,
+    "seed": 20260515
+  },
+  "version": "v1"
+}

@@ -80,3 +80,8 @@ next-env.d.ts
 *.local.json
 .scratch/
 tmp/
+
+# ML build artifacts — regenerate via `cd ml; py train_red_flag.py`
+ml/models/red_flag_v1/model.onnx
+ml/models/red_flag_v1/model.onnx.data
+ml/models/red_flag_v1/tokenizer/

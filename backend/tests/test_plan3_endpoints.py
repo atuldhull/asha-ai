@@ -81,7 +81,7 @@ def test_triage_runny_nose_has_common_cold_in_differential():
     assert body.get("citations")
 
 
-def test_root_advertises_v0_3_0():
+def test_root_advertises_version():
     r = client.get("/")
     assert r.status_code == 200
-    assert r.json()["version"] == "0.3.0"
+    assert r.json()["version"] == "0.5.1"

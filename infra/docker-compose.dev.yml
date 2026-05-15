@@ -1,0 +1,38 @@
+# ASHA-AI · dev overlay for docker-compose.prod.yml
+# ===================================================
+# Adds host-port mappings for the infra services so the backend venv
+# (running on the host machine, NOT inside docker) can connect to them.
+# Production deploys never need this overlay — the prod backend container
+# talks to its peers via the internal docker network only.
+#
+# Bring up the infra-only stack for local dev:
+#   cd D:\hack\infra
+#   docker compose -f docker-compose.prod.yml -f docker-compose.dev.yml up -d postgres valkey qdrant minio
+#
+# Alternative port choices (avoid common defaults — many local stacks already use 5432/6379/9000):
+#   postgres → 15432
+#   valkey   → 16379
+#   qdrant   → 16333 + 16334
+#   minio    → 19000 (data) + 19001 (console)
+
+services:
+  postgres:
+    ports:
+      - "15432:5432"
+
+  valkey:
+    ports:
+      - "16379:6379"
+
+  qdrant:
+    ports:
+      - "16333:6333"
+      - "16334:6334"
+
+  minio:
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+
+  # Traefik on 80/443 is fine — verified those ports are free on this host.
+  # If you ALSO need to alt-map them, add overrides here.
