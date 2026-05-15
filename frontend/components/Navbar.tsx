@@ -32,12 +32,19 @@ export function Navbar() {
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
         <Link
           href="/"
-          className="flex items-center gap-2 font-bold tracking-tight text-slate-100 hover:text-emerald-400 transition-colors"
+          className="flex items-center gap-2.5 font-bold tracking-tight text-slate-100 transition-opacity hover:opacity-80"
           aria-label="ASHA-AI home"
         >
-          <Activity className="h-5 w-5 text-emerald-500" aria-hidden />
-          <span>ASHA-AI</span>
-          <span className="text-xs font-normal text-slate-500 hidden sm:inline">triage</span>
+          <span
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#4a5a2a] text-white"
+            aria-hidden
+          >
+            <Activity className="h-4 w-4" />
+          </span>
+          <span className="font-[var(--font-display)] text-lg text-[#2e2218]">ASHA-AI</span>
+          <span className="text-[10px] font-normal uppercase tracking-[0.12em] text-slate-500 hidden sm:inline">
+            triage
+          </span>
         </Link>
 
         <nav className="flex items-center gap-2 text-sm">

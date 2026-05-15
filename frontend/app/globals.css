@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ───────────────────────────────────────────────────────────────────
+   AyurAI warm palette — applied app-wide so every route matches the
+   landing. The landing itself is scoped under #asha-landing with its
+   own copy of these vars and is unaffected by the retone layer below.
+   ─────────────────────────────────────────────────────────────────── */
+:root {
+  --cream:   #fbf3ec;  /* page background — light peach */
+  --cream2:  #f4e9da;
+  --cream3:  #e8ddc4;
+  --peach:   #fdf0e8;  /* raised panels / sheets */
+  --peach2:  #f7e6d6;
+  --warm-white: #fffaf4; /* inputs, hover */
+  --olive:   #4a5a2a;
+  --olive2:  #6b7f3a;
+  --olive4:  #eef4dc;
+  --terra:   #b5632a;
+  --terra2:  #d4874e;
+  --bark:    #2e2218;  /* primary text */
+  --bark2:   #5a4430;  /* secondary text */
+  --bark3:   #9a8068;  /* muted text */
+  --line:    rgba(46, 34, 24, 0.12);
+  --line2:   rgba(46, 34, 24, 0.18);
+}
+
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
@@ -62,6 +86,73 @@
     100% { background-position: 200% 0; }
   }
 }
+
+/* ───────────────────────────────────────────────────────────────────
+   GLOBAL WARM RETONE
+   The app was built dark-first with hardcoded `#0a0e1a`/`#111728`/slate
+   utilities across ~40 files. Rather than hand-edit each, this layer
+   remaps the recurring dark tokens → the AyurAI peach/cream/bark scale
+   so every route matches the landing in one place. The landing
+   (#asha-landing) uses its own scoped CSS and never these utilities,
+   so it is unaffected.
+   ─────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Page + panel backgrounds (arbitrary hex used as app chrome) */
+  .bg-\[\#0a0e1a\]            { background-color: var(--cream) !important; }
+  .bg-\[\#0a0e1a\]\/80        { background-color: rgba(251,243,236,0.82) !important; }
+  .bg-\[\#0a0e1a\]\/95        { background-color: rgba(251,243,236,0.95) !important; }
+  .bg-\[\#111728\]            { background-color: var(--warm-white) !important; }
+  .bg-\[\#0f1421\]            { background-color: var(--peach) !important; }
+  .bg-\[\#0f1421\]\/95        { background-color: rgba(253,240,232,0.96) !important; }
+  .bg-\[\#0f1421\]\/40        { background-color: rgba(253,240,232,0.55) !important; }
+  .bg-\[\#141b30\]            { background-color: var(--cream2) !important; }
+  .bg-\[\#0f0a1e\]\/70        { background-color: rgba(244,233,218,0.7) !important; }
+
+  /* Slate neutral scale → warm tints */
+  .bg-slate-900,
+  .bg-slate-900\/40, .bg-slate-900\/60, .bg-slate-900\/80, .bg-slate-900\/95 {
+    background-color: var(--warm-white) !important;
+  }
+  .bg-slate-950\/40, .bg-slate-950\/70, .bg-slate-950\/80, .bg-slate-950\/95 {
+    background-color: rgba(251,243,236,0.7) !important;
+  }
+  .bg-slate-800, .bg-slate-800\/40, .bg-slate-800\/50, .bg-slate-800\/60 {
+    background-color: var(--cream2) !important;
+  }
+
+  /* Text scale */
+  .text-slate-100, .text-slate-200, .text-\[\#e8ecf5\] { color: var(--bark) !important; }
+  .text-slate-300                                       { color: var(--bark2) !important; }
+  .text-slate-400, .text-slate-500, .text-slate-600     { color: var(--bark3) !important; }
+
+  /* Borders */
+  .border-slate-800, .border-slate-800\/60,
+  .border-slate-700, .border-slate-700\/60,
+  .border-slate-600 { border-color: var(--line) !important; }
+
+  /* Slate hover states used as interactive chrome */
+  .hover\:bg-slate-800:hover,
+  .hover\:bg-slate-800\/50:hover,
+  .hover\:bg-slate-800\/60:hover { background-color: var(--peach2) !important; }
+  .hover\:border-slate-600:hover,
+  .hover\:border-slate-700:hover { border-color: var(--line2) !important; }
+  .hover\:text-slate-100:hover,
+  .hover\:text-slate-200:hover   { color: var(--bark) !important; }
+
+  /* Inputs / textareas keep a readable warm field */
+  input.bg-\[\#111728\], textarea.bg-\[\#111728\], select.bg-\[\#111728\] {
+    background-color: var(--warm-white) !important;
+    color: var(--bark) !important;
+  }
+  ::placeholder { color: var(--bark3) !important; opacity: 0.7; }
+
+  /* Scrollbar to match */
+  ::-webkit-scrollbar-thumb { background: var(--cream3) !important; }
+}
+
+/* Warm scrollbar (override the dark rule above) */
+.dark ::-webkit-scrollbar-thumb { background: var(--cream3); }
+.dark ::-webkit-scrollbar-thumb:hover { background: var(--bark3); }
 
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {

@@ -12,9 +12,10 @@ import {
 import type { Pin } from '@/lib/types';
 import { useReduced } from '@/lib/reduced-motion';
 
-const SKIN_COLOR = '#d8a384';
-const SKIN_HOVER = '#f0c2a4';
+const SKIN_COLOR = '#e7b095';
+const SKIN_HOVER = '#f4c9ad';
 const SKIN_TAPPED = '#e2735c';
+const SKIN_SHEEN = '#d98a6a';
 
 /**
  * Plan 6.1 BodyMap3D — placeholder anatomical body for the /triage/body-map-3d
@@ -36,81 +37,97 @@ const SKIN_TAPPED = '#e2735c';
 interface BodyPart {
   /** Mesh name — must match a region in regions.ts (or be ignored on tap). */
   name: string;
-  type: 'sphere' | 'box' | 'cylinder';
+  type: 'sphere' | 'box' | 'cylinder' | 'capsule';
   /** [x, y, z] position relative to body group origin. */
   position: [number, number, number];
   /** Geometry args:
    *   sphere   -> [radius, widthSegments?, heightSegments?]
    *   box      -> [width, height, depth]
    *   cylinder -> [radiusTop, radiusBottom, height, radialSegments?]
+   *   capsule  -> [radius, length, capSegments?, radialSegments?]
    */
   args: number[];
   rotation?: [number, number, number];
+  /** Non-uniform scale — turns spheres into anatomical ellipsoids. */
+  scale?: [number, number, number];
 }
 
+/**
+ * Anatomically-proportioned humanoid built from capsules + ellipsoids.
+ * Smooth organic forms that abut so SSAO + the studio HDRI read them as
+ * one continuous body — far more realistic than the old box figure,
+ * with zero external assets. Region `name`s are byte-identical to the
+ * previous taxonomy so raycast / pins / regions.ts stay 1:1.
+ *
+ * Coordinate space: ~2.55 units tall, head crown ≈ 1.78, sole ≈ -0.92,
+ * centred on x. Left/right keep the prior sign convention (patient-left
+ * = −x) so stored Pin geometry doesn't shift.
+ *
+ * `capsule` args = [radius, length, capSeg, radialSeg]; default axis Y.
+ * `sphere` + `scale` = ellipsoid.
+ */
 const PLACEHOLDER_PARTS: BodyPart[] = [
-  // Head
-  { name: 'r-head-front', type: 'sphere', position: [0, 1.7, 0], args: [0.2, 24, 24] },
-  { name: 'r-face', type: 'sphere', position: [0, 1.65, 0.18], args: [0.05, 16, 16] },
-  // Neck
-  { name: 'r-neck-front', type: 'cylinder', position: [0, 1.45, 0], args: [0.075, 0.085, 0.18, 16] },
-  // Shoulders
-  { name: 'r-shoulder-l', type: 'sphere', position: [-0.32, 1.32, 0], args: [0.13, 18, 18] },
-  { name: 'r-shoulder-r', type: 'sphere', position: [0.32, 1.32, 0], args: [0.13, 18, 18] },
-  // Chest split
-  { name: 'r-chest-left', type: 'box', position: [-0.15, 1.1, 0.04], args: [0.3, 0.4, 0.22] },
-  { name: 'r-chest-right', type: 'box', position: [0.15, 1.1, 0.04], args: [0.3, 0.4, 0.22] },
-  { name: 'r-sternum', type: 'box', position: [0, 1.1, 0.16], args: [0.06, 0.4, 0.02] },
-  // Abdomen quadrants
-  { name: 'r-upper-abdomen-left', type: 'box', position: [-0.13, 0.78, 0.05], args: [0.26, 0.18, 0.2] },
-  { name: 'r-upper-abdomen-right', type: 'box', position: [0.13, 0.78, 0.05], args: [0.26, 0.18, 0.2] },
-  { name: 'r-epigastrium', type: 'box', position: [0, 0.85, 0.16], args: [0.08, 0.1, 0.02] },
-  { name: 'r-lower-abdomen-left', type: 'box', position: [-0.13, 0.6, 0.05], args: [0.26, 0.16, 0.2] },
-  { name: 'r-lower-abdomen-right', type: 'box', position: [0.13, 0.6, 0.05], args: [0.26, 0.16, 0.2] },
-  { name: 'r-suprapubic', type: 'box', position: [0, 0.48, 0.06], args: [0.18, 0.08, 0.18] },
-  // Pelvis + groin
-  { name: 'r-pelvis', type: 'box', position: [0, 0.36, 0], args: [0.45, 0.16, 0.24] },
-  { name: 'r-groin', type: 'box', position: [0, 0.27, 0.08], args: [0.16, 0.08, 0.1] },
-  // Arms — left
-  { name: 'r-upper-arm-l', type: 'cylinder', position: [-0.4, 1.05, 0], args: [0.075, 0.085, 0.42, 12], rotation: [0, 0, 0.08] },
-  { name: 'r-elbow-l', type: 'sphere', position: [-0.43, 0.82, 0], args: [0.075, 14, 14] },
-  { name: 'r-forearm-l', type: 'cylinder', position: [-0.45, 0.6, 0], args: [0.06, 0.075, 0.4, 12], rotation: [0, 0, 0.04] },
-  { name: 'r-wrist-l', type: 'sphere', position: [-0.46, 0.39, 0], args: [0.055, 14, 14] },
-  { name: 'r-hand-l', type: 'box', position: [-0.46, 0.3, 0], args: [0.08, 0.13, 0.04] },
-  // Arms — right
-  { name: 'r-upper-arm-r', type: 'cylinder', position: [0.4, 1.05, 0], args: [0.075, 0.085, 0.42, 12], rotation: [0, 0, -0.08] },
-  { name: 'r-elbow-r', type: 'sphere', position: [0.43, 0.82, 0], args: [0.075, 14, 14] },
-  { name: 'r-forearm-r', type: 'cylinder', position: [0.45, 0.6, 0], args: [0.06, 0.075, 0.4, 12], rotation: [0, 0, -0.04] },
-  { name: 'r-wrist-r', type: 'sphere', position: [0.46, 0.39, 0], args: [0.055, 14, 14] },
-  { name: 'r-hand-r', type: 'box', position: [0.46, 0.3, 0], args: [0.08, 0.13, 0.04] },
-  // Legs — left
-  { name: 'r-thigh-l', type: 'cylinder', position: [-0.13, 0.06, 0], args: [0.1, 0.115, 0.55, 14] },
-  { name: 'r-knee-l', type: 'sphere', position: [-0.13, -0.24, 0], args: [0.09, 16, 16] },
-  { name: 'r-calf-l', type: 'cylinder', position: [-0.13, -0.5, 0], args: [0.075, 0.09, 0.5, 14] },
-  { name: 'r-ankle-l', type: 'sphere', position: [-0.13, -0.78, 0], args: [0.07, 14, 14] },
-  { name: 'r-foot-l', type: 'box', position: [-0.13, -0.84, 0.06], args: [0.1, 0.06, 0.22] },
-  // Legs — right
-  { name: 'r-thigh-r', type: 'cylinder', position: [0.13, 0.06, 0], args: [0.1, 0.115, 0.55, 14] },
-  { name: 'r-knee-r', type: 'sphere', position: [0.13, -0.24, 0], args: [0.09, 16, 16] },
-  { name: 'r-calf-r', type: 'cylinder', position: [0.13, -0.5, 0], args: [0.075, 0.09, 0.5, 14] },
-  { name: 'r-ankle-r', type: 'sphere', position: [0.13, -0.78, 0], args: [0.07, 14, 14] },
-  { name: 'r-foot-r', type: 'box', position: [0.13, -0.84, 0.06], args: [0.1, 0.06, 0.22] },
-  // Back regions — same coords as front but flagged via region taxonomy view='back'.
-  // The user rotates the body to see them; raycast still hits these meshes.
-  { name: 'r-head-back', type: 'sphere', position: [0, 1.7, -0.18], args: [0.05, 14, 14] },
-  { name: 'r-neck-back', type: 'cylinder', position: [0, 1.45, -0.04], args: [0.04, 0.04, 0.18, 12] },
-  { name: 'r-upper-back-l', type: 'box', position: [-0.15, 1.1, -0.16], args: [0.3, 0.4, 0.04] },
-  { name: 'r-upper-back-r', type: 'box', position: [0.15, 1.1, -0.16], args: [0.3, 0.4, 0.04] },
-  { name: 'r-mid-back', type: 'box', position: [0, 0.9, -0.16], args: [0.4, 0.18, 0.04] },
-  { name: 'r-lower-back', type: 'box', position: [0, 0.65, -0.16], args: [0.4, 0.18, 0.04] },
-  { name: 'r-buttocks-l', type: 'box', position: [-0.13, 0.36, -0.13], args: [0.22, 0.16, 0.1] },
-  { name: 'r-buttocks-r', type: 'box', position: [0.13, 0.36, -0.13], args: [0.22, 0.16, 0.1] },
-  { name: 'r-back-thigh-l', type: 'cylinder', position: [-0.13, 0.06, -0.04], args: [0.04, 0.04, 0.55, 12] },
-  { name: 'r-back-thigh-r', type: 'cylinder', position: [0.13, 0.06, -0.04], args: [0.04, 0.04, 0.55, 12] },
-  { name: 'r-calf-back-l', type: 'cylinder', position: [-0.13, -0.5, -0.04], args: [0.04, 0.04, 0.5, 12] },
-  { name: 'r-calf-back-r', type: 'cylinder', position: [0.13, -0.5, -0.04], args: [0.04, 0.04, 0.5, 12] },
-  { name: 'r-heel-l', type: 'sphere', position: [-0.13, -0.83, -0.05], args: [0.045, 12, 12] },
-  { name: 'r-heel-r', type: 'sphere', position: [0.13, -0.83, -0.05], args: [0.045, 12, 12] },
+  // ── Head + face ──
+  { name: 'r-head-front', type: 'sphere', position: [0, 1.62, 0.01], args: [0.17, 32, 32], scale: [0.92, 1.12, 1.0] },
+  { name: 'r-face', type: 'sphere', position: [0, 1.58, 0.12], args: [0.105, 24, 24], scale: [1.0, 1.15, 0.55] },
+  // ── Neck ──
+  { name: 'r-neck-front', type: 'capsule', position: [0, 1.43, 0.005], args: [0.062, 0.085, 6, 18] },
+  // ── Shoulders (deltoids) ──
+  { name: 'r-shoulder-l', type: 'sphere', position: [-0.255, 1.345, 0.01], args: [0.105, 22, 22], scale: [1.0, 0.92, 1.0] },
+  { name: 'r-shoulder-r', type: 'sphere', position: [0.255, 1.345, 0.01], args: [0.105, 22, 22], scale: [1.0, 0.92, 1.0] },
+  // ── Chest (pectorals) ──
+  { name: 'r-chest-left', type: 'sphere', position: [-0.092, 1.17, 0.055], args: [0.15, 28, 28], scale: [0.96, 1.05, 0.82] },
+  { name: 'r-chest-right', type: 'sphere', position: [0.092, 1.17, 0.055], args: [0.15, 28, 28], scale: [0.96, 1.05, 0.82] },
+  { name: 'r-sternum', type: 'capsule', position: [0, 1.13, 0.125], args: [0.03, 0.26, 6, 14] },
+  // ── Abdomen quadrants ──
+  { name: 'r-upper-abdomen-left', type: 'sphere', position: [-0.092, 0.92, 0.05], args: [0.125, 24, 24], scale: [1.0, 0.88, 0.86] },
+  { name: 'r-upper-abdomen-right', type: 'sphere', position: [0.092, 0.92, 0.05], args: [0.125, 24, 24], scale: [1.0, 0.88, 0.86] },
+  { name: 'r-epigastrium', type: 'sphere', position: [0, 0.99, 0.115], args: [0.07, 18, 18], scale: [1.1, 0.9, 0.55] },
+  { name: 'r-lower-abdomen-left', type: 'sphere', position: [-0.09, 0.71, 0.05], args: [0.122, 24, 24], scale: [1.0, 0.92, 0.86] },
+  { name: 'r-lower-abdomen-right', type: 'sphere', position: [0.09, 0.71, 0.05], args: [0.122, 24, 24], scale: [1.0, 0.92, 0.86] },
+  { name: 'r-suprapubic', type: 'sphere', position: [0, 0.55, 0.055], args: [0.11, 20, 20], scale: [1.05, 0.78, 0.78] },
+  // ── Pelvis + groin ──
+  { name: 'r-pelvis', type: 'capsule', position: [0, 0.43, 0], args: [0.135, 0.14, 8, 22], rotation: [0, 0, Math.PI / 2] },
+  { name: 'r-groin', type: 'sphere', position: [0, 0.31, 0.06], args: [0.085, 16, 16], scale: [1.1, 0.75, 0.85] },
+  // ── Left arm ──
+  { name: 'r-upper-arm-l', type: 'capsule', position: [-0.345, 1.10, 0.005], args: [0.058, 0.30, 6, 18], rotation: [0, 0, 0.11] },
+  { name: 'r-elbow-l', type: 'sphere', position: [-0.385, 0.86, 0], args: [0.054, 18, 18] },
+  { name: 'r-forearm-l', type: 'capsule', position: [-0.405, 0.62, 0], args: [0.049, 0.28, 6, 16], rotation: [0, 0, 0.05] },
+  { name: 'r-wrist-l', type: 'sphere', position: [-0.42, 0.41, 0], args: [0.042, 16, 16] },
+  { name: 'r-hand-l', type: 'sphere', position: [-0.425, 0.33, 0], args: [0.06, 18, 18], scale: [0.62, 1.35, 0.34] },
+  // ── Right arm ──
+  { name: 'r-upper-arm-r', type: 'capsule', position: [0.345, 1.10, 0.005], args: [0.058, 0.30, 6, 18], rotation: [0, 0, -0.11] },
+  { name: 'r-elbow-r', type: 'sphere', position: [0.385, 0.86, 0], args: [0.054, 18, 18] },
+  { name: 'r-forearm-r', type: 'capsule', position: [0.405, 0.62, 0], args: [0.049, 0.28, 6, 16], rotation: [0, 0, -0.05] },
+  { name: 'r-wrist-r', type: 'sphere', position: [0.42, 0.41, 0], args: [0.042, 16, 16] },
+  { name: 'r-hand-r', type: 'sphere', position: [0.425, 0.33, 0], args: [0.06, 18, 18], scale: [0.62, 1.35, 0.34] },
+  // ── Left leg ──
+  { name: 'r-thigh-l', type: 'capsule', position: [-0.115, 0.07, 0.005], args: [0.088, 0.34, 8, 20], rotation: [0, 0, 0.02] },
+  { name: 'r-knee-l', type: 'sphere', position: [-0.12, -0.22, 0.01], args: [0.072, 18, 18] },
+  { name: 'r-calf-l', type: 'capsule', position: [-0.125, -0.48, 0], args: [0.062, 0.32, 8, 18] },
+  { name: 'r-ankle-l', type: 'sphere', position: [-0.13, -0.76, 0], args: [0.05, 16, 16] },
+  { name: 'r-foot-l', type: 'sphere', position: [-0.13, -0.83, 0.08], args: [0.07, 18, 18], scale: [0.7, 0.55, 1.75] },
+  // ── Right leg ──
+  { name: 'r-thigh-r', type: 'capsule', position: [0.115, 0.07, 0.005], args: [0.088, 0.34, 8, 20], rotation: [0, 0, -0.02] },
+  { name: 'r-knee-r', type: 'sphere', position: [0.12, -0.22, 0.01], args: [0.072, 18, 18] },
+  { name: 'r-calf-r', type: 'capsule', position: [0.125, -0.48, 0], args: [0.062, 0.32, 8, 18] },
+  { name: 'r-ankle-r', type: 'sphere', position: [0.13, -0.76, 0], args: [0.05, 16, 16] },
+  { name: 'r-foot-r', type: 'sphere', position: [0.13, -0.83, 0.08], args: [0.07, 18, 18], scale: [0.7, 0.55, 1.75] },
+  // ── Back (rounded shells; user rotates to reach them) ──
+  { name: 'r-head-back', type: 'sphere', position: [0, 1.63, -0.10], args: [0.105, 18, 18], scale: [1.0, 1.05, 0.55] },
+  { name: 'r-neck-back', type: 'capsule', position: [0, 1.43, -0.045], args: [0.05, 0.07, 5, 14] },
+  { name: 'r-upper-back-l', type: 'sphere', position: [-0.092, 1.17, -0.075], args: [0.15, 24, 24], scale: [0.96, 1.05, 0.55] },
+  { name: 'r-upper-back-r', type: 'sphere', position: [0.092, 1.17, -0.075], args: [0.15, 24, 24], scale: [0.96, 1.05, 0.55] },
+  { name: 'r-mid-back', type: 'sphere', position: [0, 0.92, -0.075], args: [0.16, 22, 22], scale: [1.05, 0.7, 0.5] },
+  { name: 'r-lower-back', type: 'sphere', position: [0, 0.68, -0.075], args: [0.15, 22, 22], scale: [1.05, 0.78, 0.5] },
+  { name: 'r-buttocks-l', type: 'sphere', position: [-0.092, 0.40, -0.075], args: [0.115, 20, 20], scale: [1.05, 1.0, 0.85] },
+  { name: 'r-buttocks-r', type: 'sphere', position: [0.092, 0.40, -0.075], args: [0.115, 20, 20], scale: [1.05, 1.0, 0.85] },
+  { name: 'r-back-thigh-l', type: 'capsule', position: [-0.115, 0.07, -0.045], args: [0.05, 0.30, 6, 14] },
+  { name: 'r-back-thigh-r', type: 'capsule', position: [0.115, 0.07, -0.045], args: [0.05, 0.30, 6, 14] },
+  { name: 'r-calf-back-l', type: 'capsule', position: [-0.125, -0.48, -0.045], args: [0.045, 0.30, 6, 14] },
+  { name: 'r-calf-back-r', type: 'capsule', position: [0.125, -0.48, -0.045], args: [0.045, 0.30, 6, 14] },
+  { name: 'r-heel-l', type: 'sphere', position: [-0.13, -0.82, -0.045], args: [0.05, 14, 14], scale: [0.9, 1.0, 0.8] },
+  { name: 'r-heel-r', type: 'sphere', position: [0.13, -0.82, -0.045], args: [0.05, 14, 14], scale: [0.9, 1.0, 0.8] },
 ];
 
 interface SelectedRegion {
@@ -267,6 +284,7 @@ function BodyPartMesh({
       name={part.name}
       position={part.position}
       rotation={part.rotation}
+      scale={part.scale}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerOver={onPointerOver}
@@ -283,10 +301,22 @@ function BodyPartMesh({
       {part.type === 'cylinder' && (
         <cylinderGeometry args={part.args as [number, number, number, number?]} />
       )}
-      <meshStandardMaterial
+      {part.type === 'capsule' && (
+        <capsuleGeometry args={part.args as [number, number, number?, number?]} />
+      )}
+      {/* Physically-based skin: subtle subsurface warmth via sheen +
+          clearcoat, lit by the studio HDRI + SSAO from <Scene>. This is
+          what turns the segmented forms into a believable body. */}
+      <meshPhysicalMaterial
         color={color}
-        roughness={0.55}
-        metalness={0.05}
+        roughness={0.52}
+        metalness={0}
+        clearcoat={0.14}
+        clearcoatRoughness={0.6}
+        sheen={0.55}
+        sheenRoughness={0.85}
+        sheenColor={SKIN_SHEEN}
+        envMapIntensity={0.55}
         flatShading={false}
       />
     </mesh>

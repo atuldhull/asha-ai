@@ -3,6 +3,7 @@ import { Inter, Noto_Sans_Devanagari, Cormorant_Garamond, DM_Sans } from 'next/f
 import { DisclaimerFooter } from '@/components/DisclaimerFooter';
 import { ConsentGate } from '@/components/ConsentGate';
 import { Toaster } from '@/components/Toaster';
+import { RouteTransition } from '@/components/providers/RouteTransition';
 import { Providers } from './providers';
 import './globals.css';
 
@@ -44,7 +45,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0a0e1a',
+  themeColor: '#fbf3ec',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
@@ -54,11 +55,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${notoDevanagari.variable} ${cormorant.variable} ${dmSans.variable} dark`}
+      className={`${inter.variable} ${notoDevanagari.variable} ${cormorant.variable} ${dmSans.variable}`}
     >
-      <body className="min-h-screen flex flex-col bg-[#0a0e1a] text-[#e8ecf5] antialiased dark:bg-[#0a0e1a] dark:text-[#e8ecf5]">
+      <body className="min-h-screen flex flex-col bg-[#fbf3ec] text-[#2e2218] antialiased">
         <Providers>
-          <main className="flex-1 flex flex-col">{children}</main>
+          <main className="flex-1 flex flex-col">
+            <RouteTransition>{children}</RouteTransition>
+          </main>
           <DisclaimerFooter />
           {/* Plan 6.6 Phase B (frontend) — DPDP consent gate. Auto-renders
               the ConsentSheet when localStorage + server agree the user
