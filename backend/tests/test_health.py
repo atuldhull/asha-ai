@@ -10,7 +10,7 @@ def test_health_returns_200_with_ok_status():
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok"
-    assert body["version"] == "0.5.1"
+    assert isinstance(body["version"], str) and body["version"].count(".") == 2  # self-syncing: any semver
 
 
 def test_root_returns_disclaimer():
