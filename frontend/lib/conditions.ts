@@ -728,3 +728,11 @@ export function identifyCondition(
 export function allConditions(): ConditionGuidance[] {
   return CONDITIONS.map(({ match: _m, strong: _s, ...g }) => g);
 }
+
+/** Direct id → guidance lookup (used by the demo seeder). */
+export function conditionById(id: string): ConditionGuidance | null {
+  const entry = CONDITIONS.find((c) => c.id === id);
+  if (!entry) return null;
+  const { match: _m, strong: _s, ...g } = entry;
+  return g;
+}

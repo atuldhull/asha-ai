@@ -1,13 +1,17 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Loader2, Send, Trash2 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
-import { Scene } from '@/components/3d/Scene';
-import { BodyMap3D, type SelectedRegion } from '@/components/3d/BodyMap3D';
+import {
+  AnatomyBodyMap,
+  type AnatomySelection,
+} from '@/components/anatomy/AnatomyBodyMap';
+import type { SelectedRegion } from '@/components/3d/BodyMap3DStage';
 import { PainPanel } from '@/components/3d/PainPanel';
 import { VerdictCard } from '@/components/VerdictCard';
 import { postTriage } from '@/lib/api';
@@ -22,82 +26,90 @@ import {
 import { useUser } from '@/lib/auth';
 import { useTranslation } from '@/lib/i18n/I18nProvider';
 import { interp } from '@/lib/i18n/dict';
-import { regionForId } from '@/lib/body-map/regions';
+import { regionForId, type BodyRegion } from '@/lib/body-map/regions';
 import type { ChatMessage, Pin, TriageResponse } from '@/lib/types';
 
 const MAX_PINS = 5;
 
+// R3F can't server-render (WebGL is browser-only), so the 3D stage is loaded
+// client-side. Keeps the heavy three/drei bundle off SSR and off other routes.
+const BodyMap3DStage = dynamic(
+  () =>
+    import('@/components/3d/BodyMap3DStage').then((m) => ({
+      default: m.BodyMap3DStage,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="absolute inset-0 flex items-center justify-center text-slate-400">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+        Loading 3D body…
+      </div>
+    ),
+  },
+);
+
+/** Unified tap selection — 3D adds the mesh position, 2D fallback doesn't. */
+interface RegionSelection {
+  region: BodyRegion;
+  meshLocalPos?: [number, number, number];
+}
+
 /**
  * Plan 6.1 entry route — Symptom Cinema 3D body map.
  *
- * Fallback chain:
- *   1. SSR-renders a noscript notice + link to /triage
- *   2. On client mount, checks WebGL2 + prefers-reduced-motion. If either
- *      fails, redirects to /triage with a banner explaining the fallback.
- *      (v1 SVG body map at /triage/body-map was never shipped, so /triage
- *      chat is the fallback.)
- *   3. Otherwise mounts the 3D Scene + BodyMap3D + PainPanel.
+ * Renders a real, orbitable procedural anatomical figure (R3F). When WebGL2
+ * is unavailable (very low-end devices), it degrades to the 2D anatomy plate
+ * so the route still works end-to-end on the rural Android this serves.
  */
 export default function BodyMap3DPage() {
   // useSearchParams() requires a Suspense boundary in production builds.
-  // Same pattern as /sign-in, /doctor/dashboard, /triage.
   return (
-    <Suspense fallback={
-      <>
-        <Navbar />
-        <div className="flex-1 flex items-center justify-center text-slate-500">Loading 3D body…</div>
-      </>
-    }>
+    <Suspense
+      fallback={
+        <>
+          <Navbar />
+          <div className="flex-1 flex items-center justify-center text-slate-500">
+            Loading anatomy…
+          </div>
+        </>
+      }
+    >
       <BodyMap3DPageInner />
     </Suspense>
   );
 }
 
 function BodyMap3DPageInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useUser();
   const { t, locale } = useTranslation();
 
-  const [ready, setReady] = useState<'pending' | 'ok' | 'fallback'>('pending');
+  // 'pending' until we know if WebGL2 is usable; then '3d' or '2d'.
+  const [mode, setMode] = useState<'pending' | '3d' | '2d'>('pending');
   const [pins, setPins] = useState<Pin[]>([]);
-  const [selection, setSelection] = useState<SelectedRegion | null>(null);
+  const [selection, setSelection] = useState<RegionSelection | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [verdict, setVerdict] = useState<TriageResponse | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(
     searchParams.get('session'),
   );
 
-  // Capability + a11y check (client-only).
+  // WebGL2 capability probe. The 3D body is the primary experience; only
+  // genuinely incapable devices fall back to the 2D plate.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    let webgl2 = false;
     try {
-      const c = document.createElement('canvas');
-      webgl2 = !!c.getContext('webgl2');
+      const canvas = document.createElement('canvas');
+      const gl =
+        canvas.getContext('webgl2') || canvas.getContext('webgl');
+      setMode(gl ? '3d' : '2d');
     } catch {
-      webgl2 = false;
+      setMode('2d');
     }
-
-    const reduce = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    ).matches;
-
-    if (!webgl2 || reduce) {
-      const reason = !webgl2 ? 'no-webgl2' : 'reduced-motion';
-      router.replace(`/triage?fallback=${reason}`);
-      setReady('fallback');
-      return;
-    }
-
-    setReady('ok');
-  }, [router]);
+  }, []);
 
   function ensureSessionId(): string | null {
     if (sessionId) {
-      // Idempotently re-stamp inputMode each submit so doctor cockpit always
-      // sees the most-recent origin (covers users who switch chat → 3D mid-session).
       setInputMode(sessionId, 'body_map_3d');
       return sessionId;
     }
@@ -108,8 +120,12 @@ function BodyMap3DPageInner() {
     return s.id;
   }
 
-  const handleRegionTap = useCallback((sel: SelectedRegion) => {
-    setSelection(sel);
+  const handleRegionTap3D = useCallback((sel: SelectedRegion) => {
+    setSelection({ region: sel.region, meshLocalPos: sel.meshLocalPos });
+  }, []);
+
+  const handleRegionTap2D = useCallback((sel: AnatomySelection) => {
+    setSelection({ region: sel.region });
   }, []);
 
   const handleSavePin = useCallback((pin: Pin) => {
@@ -175,30 +191,15 @@ function BodyMap3DPageInner() {
     }
   }
 
-  if (ready === 'pending') {
-    return (
-      <div className="flex flex-1 items-center justify-center bg-[#0a0e1a] text-slate-400">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-        {t('bodymap.checkingDevice')}
-      </div>
-    );
-  }
-
-  if (ready === 'fallback') {
-    return (
-      <div className="flex flex-1 items-center justify-center bg-[#0a0e1a] text-slate-300">
-        {t('bodymap.redirecting')}
-      </div>
-    );
-  }
-
   return (
     <>
       <Navbar />
       <noscript>
         <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-3 text-sm text-amber-200">
           {t('bodymap.noscriptFallback')}{' '}
-          <Link href="/triage" className="underline">{t('bodymap.useChat')}</Link>
+          <Link href="/triage" className="underline">
+            {t('bodymap.useChat')}
+          </Link>
         </div>
       </noscript>
 
@@ -230,42 +231,67 @@ function BodyMap3DPageInner() {
           </Link>
         </header>
 
-        {/* 3D canvas — fills available space */}
-        <div className="relative flex-1 min-h-[420px]">
-          <Scene cameraPosition={[0, 0.4, 4.2]} fov={42}>
-            <BodyMap3D
-              pins={pins}
-              maxPins={MAX_PINS}
-              onRegionTap={handleRegionTap}
-            />
-          </Scene>
-
-          {/* Pin counter chip */}
-          <div className="absolute left-4 top-4 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs text-slate-300 backdrop-blur">
-            {interp(t('bodymap.placedOf'), { n: pins.length, max: MAX_PINS })}
-          </div>
-
-          {pins.length > 0 && (
-            <button
-              type="button"
-              onClick={handleClearPins}
-              className="absolute right-4 top-4 flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs text-slate-300 backdrop-blur hover:border-red-500/40 hover:text-red-400"
-              aria-label={t('bodymap.clearAria')}
-            >
-              <Trash2 className="h-3 w-3" aria-hidden />
-              {t('bodymap.clear')}
-            </button>
+        {/* Body map surface — 3D Canvas (or 2D fallback) fills all space */}
+        <div className="relative flex-1 min-h-[520px] overflow-hidden">
+          {mode === 'pending' && (
+            <div className="absolute inset-0 flex items-center justify-center text-slate-400">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+              {t('bodymap.checkingDevice')}
+            </div>
           )}
 
-          {pins.length === 0 && !selection && (
-            <motion.div
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="pointer-events-none absolute inset-x-4 bottom-24 mx-auto max-w-sm rounded-xl border border-slate-700 bg-slate-900/85 p-3 text-center text-xs text-slate-300 backdrop-blur"
-            >
-              {t('bodymap.hint')}
-            </motion.div>
+          {mode === '3d' && (
+            <BodyMap3DStage
+              pins={pins}
+              maxPins={MAX_PINS}
+              onRegionTap={handleRegionTap3D}
+            />
+          )}
+
+          {mode === '2d' && (
+            <AnatomyBodyMap
+              pins={pins}
+              maxPins={MAX_PINS}
+              onRegionTap={handleRegionTap2D}
+              locale={locale === 'hi' || locale === 'kn' ? locale : 'en'}
+            />
+          )}
+
+          {mode !== 'pending' && (
+            <>
+              {/* Pin counter chip */}
+              <div className="absolute left-4 top-4 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs text-slate-300 backdrop-blur">
+                {interp(t('bodymap.placedOf'), {
+                  n: pins.length,
+                  max: MAX_PINS,
+                })}
+              </div>
+
+              {pins.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearPins}
+                  className="absolute right-4 top-4 flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs text-slate-300 backdrop-blur hover:border-red-500/40 hover:text-red-400"
+                  aria-label={t('bodymap.clearAria')}
+                >
+                  <Trash2 className="h-3 w-3" aria-hidden />
+                  {t('bodymap.clear')}
+                </button>
+              )}
+
+              {pins.length === 0 && !selection && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="pointer-events-none absolute inset-x-4 bottom-6 mx-auto max-w-sm rounded-xl border border-slate-700 bg-slate-900/85 p-3 text-center text-xs text-slate-300 backdrop-blur"
+                >
+                  {mode === '3d'
+                    ? 'Drag to rotate the body. Tap a body part where it hurts.'
+                    : t('bodymap.hint')}
+                </motion.div>
+              )}
+            </>
           )}
         </div>
 
@@ -286,8 +312,12 @@ function BodyMap3DPageInner() {
                     key={`${pin.body_region}-${i}`}
                     className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] text-emerald-200"
                   >
-                    <span className="font-medium">{layLabel ?? pin.body_region}</span>
-                    <span className="text-emerald-400/80">{pin.intensity}/10</span>
+                    <span className="font-medium">
+                      {layLabel ?? pin.body_region}
+                    </span>
+                    <span className="text-emerald-400/80">
+                      {pin.intensity}/10
+                    </span>
                   </span>
                 );
               })}
@@ -375,7 +405,8 @@ function summarizePins(pins: Pin[]): string {
     .map((p) => {
       const region = regionForId(p.body_region);
       const where = region?.layperson_en ?? p.body_region;
-      const qualities = p.quality.length > 0 ? ` (${p.quality.join(', ')})` : '';
+      const qualities =
+        p.quality.length > 0 ? ` (${p.quality.join(', ')})` : '';
       const dur = p.duration_band.replace(/_/g, ' ');
       return `${where}: intensity ${p.intensity}/10${qualities}, ${dur}`;
     })

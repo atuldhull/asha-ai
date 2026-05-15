@@ -66,9 +66,9 @@ function DoctorDashboardInner() {
     chimeRef.current.volume = 0.4;
   }, []);
 
-  // Plan 5.1 demo seeder — `?seed=demo` populates 6 synthetic sessions
-  // covering all care levels, risk tiers, and trajectory states. Idempotent;
-  // re-runs replace the same rows by id. `?seed=clear` removes them.
+  // Demo seeder — `?seed=demo` populates 31 synthetic cases across all care
+  // levels, risk tiers and trajectory states (6 via the 3D body map).
+  // Idempotent; re-runs replace the same rows by id. `?seed=clear` removes them.
   useEffect(() => {
     const seed = searchParams?.get('seed');
     if (seed === 'demo') seedDoctorDemo({ force: true });
@@ -450,8 +450,16 @@ function DoctorEmpty() {
       </div>
       <h2 className="text-base font-semibold mb-1">No active cases</h2>
       <p className="text-sm text-slate-400">
-        Patient triages will appear here in real time (Plan 3.0).
+        Patient triages will appear here in real time.
       </p>
+      <button
+        type="button"
+        onClick={() => seedDoctorDemo({ force: true })}
+        className="mt-4 inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20"
+      >
+        <Stethoscope className="h-4 w-4" aria-hidden />
+        Load 30 demo cases
+      </button>
     </div>
   );
 }

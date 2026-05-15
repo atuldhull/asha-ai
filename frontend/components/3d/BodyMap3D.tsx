@@ -214,13 +214,19 @@ export function BodyMap3D({
         });
       }
 
-      const worldPos = e.point.clone();
-      const localPos = hit.worldToLocal(worldPos.clone());
+      // Convert the tap point into the BODY GROUP's local space (not the
+      // individual mesh's). PinMarker is a sibling under the same group and
+      // positions via `mesh_position_3d`, so group-local coords keep the pin
+      // glued to the surface no matter how the camera orbits afterwards.
+      const worldPoint = e.point.clone();
+      const groupLocal = groupRef.current
+        ? groupRef.current.worldToLocal(worldPoint.clone())
+        : worldPoint.clone();
 
       onRegionTap({
         region,
         worldPos: e.point.clone(),
-        meshLocalPos: [localPos.x, localPos.y, localPos.z],
+        meshLocalPos: [groupLocal.x, groupLocal.y, groupLocal.z],
       });
     },
     [maxPins, noteInteraction, onRegionTap, pins.length],
