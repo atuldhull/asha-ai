@@ -1,3 +1,6 @@
+# ─── Private (never publish: recovered internal planning/prompt material) ──
+/_private/
+
 # ─── Dependencies ──────────────────────────────────────────────────────
 node_modules/
 .pnp
