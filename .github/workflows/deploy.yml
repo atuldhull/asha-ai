@@ -1,5 +1,5 @@
 # ASHA-AI · CD (continuous deployment)
-# Tier 6.6 Phase G · runs on push to main AFTER CI green.
+# Runs on push to main after CI is green.
 # Gates:
 #   1. CI must be green (workflow_run trigger waits for CI completion).
 #   2. Backend Docker image is built + pushed to registry.
@@ -147,7 +147,7 @@ jobs:
           environment: production
           version: ${{ needs.build.outputs.image_tag }}
 
-      - name: 12-hour monitoring window opens (LAUNCH_PLAYBOOK.md §5)
+      - name: Post-deploy monitoring window
         run: |
-          echo "::notice::Deploy complete. 12-hour observation window per docs/LAUNCH_PLAYBOOK.md §5."
-          echo "::notice::Watch: Sentry P0/P1 · Prometheus p95 · EvidentlyAI drift · LLM cost."
+          echo "::notice::Deploy complete. Post-deploy observation window open."
+          echo "::notice::Watch: Sentry P0/P1 · Prometheus p95 latency · model drift · LLM cost."

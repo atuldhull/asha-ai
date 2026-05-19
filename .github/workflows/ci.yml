@@ -1,10 +1,10 @@
 # ASHA-AI · CI (continuous integration)
-# Tier 6.6 Phase G · runs on every PR + every push to main.
+# Runs on every PR and every push to main.
 # Gates:
-#   1. Backend lint + tests (pytest, including Plan 4.0 eval suite — must hold floor)
+#   1. Backend lint + tests (pytest, including the evaluation floor)
 #   2. ML eval regression (run_eval.py — 100% ER recall required)
 #   3. Frontend lint + build + typecheck
-#   4. Doc-drift check (INDEX.md references every doc that exists)
+#   4. Care-level string discipline + disclaimer presence
 
 name: CI
 
@@ -138,26 +138,12 @@ jobs:
         env:
           NEXT_PUBLIC_API_BASE: "http://localhost:8000"
 
-  # ──────────── Doc-drift check ────────────
+  # ──────────── Care-string + disclaimer discipline ────────────
   docs:
-    name: docs · INDEX consistency + care-string discipline
+    name: docs · care-string + disclaimer discipline
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-
-      - name: Verify INDEX.md references every doc in docs/
-        run: |
-          set -e
-          missing=0
-          for f in $(find docs -maxdepth 2 -name '*.md' -not -name 'INDEX.md' -not -path '*/research/*'); do
-            relpath=${f#docs/}
-            if ! grep -qF "$relpath" docs/INDEX.md; then
-              echo "::warning::docs/INDEX.md does not reference $relpath"
-              missing=$((missing + 1))
-            fi
-          done
-          # Don't fail CI on this — just warn. Doc-drift is a Role D follow-up.
-          echo "doc-drift warnings: $missing"
 
       - name: Care-level string discipline (must remain exact English)
         run: |

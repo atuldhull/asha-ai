@@ -85,3 +85,10 @@ tmp/
 ml/models/red_flag_v1/model.onnx
 ml/models/red_flag_v1/model.onnx.data
 ml/models/red_flag_v1/tokenizer/
+
+# DBMS report build artifacts (regenerate via docs/build_report.ps1 locally)
+docs/ASHA-AI_DBMS_Report.docx
+docs/ASHA-AI_DBMS_Report.pdf
+docs/report_front.html
+docs/report_body.html
+docs/build_report.ps1
